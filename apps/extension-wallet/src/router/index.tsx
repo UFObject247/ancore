@@ -13,7 +13,7 @@ const TransactionDetail = lazy(() => import('../screens/TransactionDetail'));
 const OnboardingFlow = lazy(() => import('../screens/Onboarding/OnboardingFlow'));
 const SendScreen = lazy(() => import('../screens/Send/SendScreen'));
 const SettingsScreen = lazy(() =>
-  import('../screens/Settings/AboutScreen').then((m) => ({ default: m.AboutScreen }))
+  import('../screens/Settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen }))
 );
 
 function Tooltip({ text }: { text: string }): JSX.Element {
