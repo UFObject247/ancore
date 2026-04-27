@@ -12,6 +12,7 @@ mod error;
 mod repositories;
 
 use api::account_activity;
+use api::health;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -54,6 +55,7 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/accounts/:account_id/activity/types",
             get(account_activity::list_types_handler),
         )
+        .route("/health", get(health::health_handler))
         .layer(CorsLayer::permissive())
         .with_state(pool);
 
