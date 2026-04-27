@@ -2,9 +2,11 @@ import express, { Express } from 'express';
 import { z } from 'zod';
 import { RelayService } from './services/relayService';
 import { createAuthMiddleware } from './middleware/auth';
+import { createIdempotencyMiddleware } from './middleware/idempotency';
 import { validateBody } from './validation/middleware';
 import { createExecuteRelayHandler } from './handlers/executeRelay';
 import { createValidateRelayHandler } from './handlers/validateRelay';
+import { IdempotencyStore } from './store/idempotency';
 import type { AuthServiceContract, SignatureServiceContract } from './types';
 
 // ── Request schema ────────────────────────────────────────────────────────────
@@ -43,7 +45,8 @@ const stubSignatureService: SignatureServiceContract = {
 
 export function createApp(
   authService: AuthServiceContract = stubAuthService,
-  signatureService: SignatureServiceContract = stubSignatureService
+  signatureService: SignatureServiceContract = stubSignatureService,
+  idempotencyStore: IdempotencyStore = new IdempotencyStore()
 ): Express {
   const app = express();
   app.use(express.json());
@@ -51,11 +54,12 @@ export function createApp(
   const relayService = new RelayService(signatureService);
   const auth = createAuthMiddleware(authService);
   const validate = validateBody(relayRequestSchema);
+  const idempotency = createIdempotencyMiddleware(idempotencyStore);
 
   const executeHandler = createExecuteRelayHandler(relayService);
   const validateHandler = createValidateRelayHandler(relayService);
 
-  app.post('/relay/execute', auth, validate, executeHandler);
+  app.post('/relay/execute', auth, validate, idempotency, executeHandler);
   app.post('/relay/validate', auth, validate, validateHandler);
   app.get('/relay/status', (_req, res) => res.json(relayService.health()));
 
