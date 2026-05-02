@@ -42,10 +42,7 @@ async function defaultSendTransaction(_draft: SendDraft): Promise<{ txId: string
  * Clicking Retry rehydrates the form with the preserved draft and clears
  * the stale error, satisfying all acceptance criteria in #429.
  */
-export function SendFlow({
-  onClose,
-  sendTransaction = defaultSendTransaction,
-}: SendFlowProps) {
+export function SendFlow({ onClose, sendTransaction = defaultSendTransaction }: SendFlowProps) {
   const { draft, updateDraft, clearDraft } = useSendDraft();
   const [state, setState] = useState<SendFlowState>(INITIAL_STATE);
 

@@ -197,14 +197,41 @@ export interface NormalizedError {
   metadata?: Record<string, unknown>;
 }
 
-const NETWORK_PATTERNS = [/ECONNREFUSED/, /ETIMEDOUT/, /ENOTFOUND/, /ENETUNREACH/, /EAI_AGAIN/, /Failed to fetch/i, /Network request failed/i, /net::ERR_/i];
-const VALIDATION_PATTERNS = [/validation failed/i, /invalid/i, /malformed/i, /bad request/i, /type error/i];
-const CONTRACT_PATTERNS = [/contract/i, /nonce/i, /insufficient/i, /revert/i, /execution reverted/i, /session key/i];
+const NETWORK_PATTERNS = [
+  /ECONNREFUSED/,
+  /ETIMEDOUT/,
+  /ENOTFOUND/,
+  /ENETUNREACH/,
+  /EAI_AGAIN/,
+  /Failed to fetch/i,
+  /Network request failed/i,
+  /net::ERR_/i,
+];
+const VALIDATION_PATTERNS = [
+  /validation failed/i,
+  /invalid/i,
+  /malformed/i,
+  /bad request/i,
+  /type error/i,
+];
+const CONTRACT_PATTERNS = [
+  /contract/i,
+  /nonce/i,
+  /insufficient/i,
+  /revert/i,
+  /execution reverted/i,
+  /session key/i,
+];
 
 function detectCategoryFromCode(code: string): ErrorCategory {
   if (!code) return 'UNKNOWN';
   if (/^(ECONN|EAI_|ETIMEDOUT|ENOT|5\d{2}|4\d{2})/.test(code)) return 'NETWORK';
-  if (/SIMULATION|SUBMISSION|SESSION_KEY|CONTRACT|INVALID|UNAUTHORIZED|INSUFFICIENT|NONCE|REVOKE|SESSION/.test(code)) return 'CONTRACT';
+  if (
+    /SIMULATION|SUBMISSION|SESSION_KEY|CONTRACT|INVALID|UNAUTHORIZED|INSUFFICIENT|NONCE|REVOKE|SESSION|INITIALIZED/.test(
+      code
+    )
+  )
+    return 'CONTRACT';
   if (/VALIDATION|MALFORMED|BAD_REQUEST|TYPE_ERROR/.test(code)) return 'VALIDATION';
   return 'UNKNOWN';
 }
@@ -220,16 +247,32 @@ export function normalizeError(error: unknown): NormalizedError {
   }
 
   // Accept canonical objects from lower layers: { code, message, ... }
-  if (typeof error === 'object' && error !== null && 'code' in error && 'message' in (error as any)) {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    'message' in (error as any)
+  ) {
     const anyErr = error as any;
-    const code = typeof anyErr.code === 'string' && anyErr.code.length > 0 ? anyErr.code : 'UNKNOWN';
-    return { code, message: String(anyErr.message), category: detectCategoryFromCode(code), metadata: anyErr };
+    const code =
+      typeof anyErr.code === 'string' && anyErr.code.length > 0 ? anyErr.code : 'UNKNOWN';
+    return {
+      code,
+      message: String(anyErr.message),
+      category: detectCategoryFromCode(code),
+      metadata: anyErr,
+    };
   }
 
   // If it's an AncoreSdkError (core SDK errors carry `code`)
   if (error instanceof AncoreSdkError) {
     const code = (error as AncoreSdkError).code ?? 'UNKNOWN';
-    return { code, message: error.message, category: detectCategoryFromCode(code), metadata: { name: error.name } };
+    return {
+      code,
+      message: error.message,
+      category: detectCategoryFromCode(code),
+      metadata: { name: error.name },
+    };
   }
 
   // Standard Error instances
@@ -240,31 +283,61 @@ export function normalizeError(error: unknown): NormalizedError {
     const tokenMatch = error.message.match(/\b([A-Z][A-Z0-9_]{2,})\b/);
     if (tokenMatch) {
       const code = tokenMatch[1];
-      return { code, message: error.message, category: detectCategoryFromCode(code), metadata: { name: error.name } };
+      return {
+        code,
+        message: error.message,
+        category: detectCategoryFromCode(code),
+        metadata: { name: error.name },
+      };
     }
 
     // Known code property on many lower-layer errors (account-abstraction uses `code`)
     if (typeof anyErr.code === 'string' && anyErr.code.length > 0) {
       const code = anyErr.code as string;
-      return { code, message: error.message, category: detectCategoryFromCode(code), metadata: { name: anyErr.name } };
+      return {
+        code,
+        message: error.message,
+        category: detectCategoryFromCode(code),
+        metadata: { name: anyErr.name },
+      };
     }
 
     // Stellar Transaction / Network shapes
     if ('resultXdr' in anyErr || 'resultCode' in anyErr) {
       const code = 'SUBMISSION_FAILED';
-      return { code, message: error.message, category: 'CONTRACT', metadata: { resultCode: anyErr.resultCode, resultXdr: anyErr.resultXdr } };
+      return {
+        code,
+        message: error.message,
+        category: 'CONTRACT',
+        metadata: { resultCode: anyErr.resultCode, resultXdr: anyErr.resultXdr },
+      };
     }
 
     // Heuristic pattern matching on the message or name
     const combined = `${error.name} ${error.message}`;
     if (NETWORK_PATTERNS.some((r) => r.test(combined))) {
-      return { code: 'NETWORK_ERROR', message: error.message, category: 'NETWORK', metadata: { name: error.name } };
+      return {
+        code: 'NETWORK_ERROR',
+        message: error.message,
+        category: 'NETWORK',
+        metadata: { name: error.name },
+      };
     }
     if (VALIDATION_PATTERNS.some((r) => r.test(combined))) {
-      return { code: 'VALIDATION_ERROR', message: error.message, category: 'VALIDATION', metadata: { name: error.name } };
+      return {
+        code: 'VALIDATION_ERROR',
+        message: error.message,
+        category: 'VALIDATION',
+        metadata: { name: error.name },
+      };
     }
     if (CONTRACT_PATTERNS.some((r) => r.test(combined))) {
-      return { code: 'CONTRACT_ERROR', message: error.message, category: 'CONTRACT', metadata: { name: error.name } };
+      return {
+        code: 'CONTRACT_ERROR',
+        message: error.message,
+        category: 'CONTRACT',
+        metadata: { name: error.name },
+      };
     }
 
     return { code: 'UNKNOWN', message: error.message, category: 'UNKNOWN' };
@@ -273,9 +346,12 @@ export function normalizeError(error: unknown): NormalizedError {
   // String or other
   if (typeof error === 'string') {
     const msg = error;
-    if (NETWORK_PATTERNS.some((r) => r.test(msg))) return { code: 'NETWORK_ERROR', message: msg, category: 'NETWORK' };
-    if (VALIDATION_PATTERNS.some((r) => r.test(msg))) return { code: 'VALIDATION_ERROR', message: msg, category: 'VALIDATION' };
-    if (CONTRACT_PATTERNS.some((r) => r.test(msg))) return { code: 'CONTRACT_ERROR', message: msg, category: 'CONTRACT' };
+    if (NETWORK_PATTERNS.some((r) => r.test(msg)))
+      return { code: 'NETWORK_ERROR', message: msg, category: 'NETWORK' };
+    if (VALIDATION_PATTERNS.some((r) => r.test(msg)))
+      return { code: 'VALIDATION_ERROR', message: msg, category: 'VALIDATION' };
+    if (CONTRACT_PATTERNS.some((r) => r.test(msg)))
+      return { code: 'CONTRACT_ERROR', message: msg, category: 'CONTRACT' };
     return { code: 'UNKNOWN', message: msg, category: 'UNKNOWN' };
   }
 

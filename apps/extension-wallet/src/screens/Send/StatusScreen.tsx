@@ -1,12 +1,4 @@
-import {
-  Badge,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  cn,
-} from '@ancore/ui-kit';
+import { Badge, Card, CardContent, CardHeader, CardTitle, Button, cn } from '@ancore/ui-kit';
 import type { TxStatus } from '@/hooks/useSendTransaction';
 import type { SendDraft } from '@/hooks/useSendDraft';
 import {
@@ -66,13 +58,7 @@ const STATUS_CONFIG: Record<
  * `onRetry` with the preserved `failedDraft` so the parent flow can
  * rehydrate the send form without the user re-entering details.
  */
-export function StatusScreen({
-  txId,
-  status,
-  failedDraft,
-  onClose,
-  onRetry,
-}: StatusScreenProps) {
+export function StatusScreen({ txId, status, failedDraft, onClose, onRetry }: StatusScreenProps) {
   const config = STATUS_CONFIG[status];
 
   const handleRetry = () => {

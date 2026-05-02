@@ -205,7 +205,12 @@ export function toCanonicalError(err: unknown) {
     return { code: err.code, message: err.message, name: err.name };
   }
   if (err instanceof Error) {
-    return { code: (err as any).code ?? 'ACCOUNT_CONTRACT_ERROR', message: err.message, name: err.name };
+    const typedErr = err as Error & { code?: string };
+    return {
+      code: typedErr.code ?? 'ACCOUNT_CONTRACT_ERROR',
+      message: err.message,
+      name: err.name,
+    };
   }
   return { code: 'ACCOUNT_CONTRACT_ERROR', message: String(err) };
 }

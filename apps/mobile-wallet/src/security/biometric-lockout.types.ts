@@ -1,4 +1,3 @@
-
 export const BIOMETRIC_MAX_ATTEMPTS = 3;
 export const LOCKOUT_DURATION_MS = 30_000; // 30 seconds
 export const LOCKOUT_STORAGE_KEY = 'biometric_lockout_state';

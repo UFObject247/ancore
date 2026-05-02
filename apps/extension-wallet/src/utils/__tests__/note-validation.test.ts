@@ -27,15 +27,19 @@ describe('Note Validation Utilities', () => {
 
     it('should reject notes over the limit', () => {
       const longNote = 'a'.repeat(MAX_NOTE_LENGTH + 1);
-      expect(validateTransferNote(longNote)).toBe(`Note must be ${MAX_NOTE_LENGTH} characters or less`);
+      expect(validateTransferNote(longNote)).toBe(
+        `Note must be ${MAX_NOTE_LENGTH} characters or less`
+      );
     });
 
     it('should handle whitespace correctly', () => {
       const noteWithSpaces = '  '.repeat(70); // 140 characters
       expect(validateTransferNote(noteWithSpaces)).toBeUndefined();
-      
+
       const noteWithExtraSpaces = '  '.repeat(71); // 142 characters
-      expect(validateTransferNote(noteWithExtraSpaces)).toBe(`Note must be ${MAX_NOTE_LENGTH} characters or less`);
+      expect(validateTransferNote(noteWithExtraSpaces)).toBe(
+        `Note must be ${MAX_NOTE_LENGTH} characters or less`
+      );
     });
   });
 
@@ -63,7 +67,8 @@ describe('Note Validation Utilities', () => {
     });
 
     it('should preserve content when truncating', () => {
-      const longNote = 'This is a very long note that should be truncated';
+      const longNote =
+        'This is a very long note that should be truncated '.repeat(5) + 'with extra content';
       const result = truncateTransferNote(longNote);
       expect(result).toContain('This is a very long note that should be trunc');
       expect(result).toMatch(/\.\.\.$/);
@@ -129,11 +134,11 @@ describe('Note Validation Utilities', () => {
     it('should combine sanitization and truncation', () => {
       const maliciousLongNote = '<script>'.repeat(30) + 'content';
       const result = formatNoteForPreview(maliciousLongNote);
-      
+
       // Should be sanitized
       expect(result).not.toContain('<script>');
       expect(result).toContain('&lt;script&gt;');
-      
+
       // Should be truncated
       expect(result.length).toBeLessThanOrEqual(MAX_NOTE_LENGTH);
     });
@@ -166,9 +171,11 @@ describe('Note Validation Utilities', () => {
     it('should handle Unicode characters correctly', () => {
       const unicodeNote = '😀😃😄😁😆😅😂🤣😊😇'.repeat(14); // 140 characters
       expect(validateTransferNote(unicodeNote)).toBeUndefined();
-      
+
       const unicodeNoteOver = unicodeNote + '😀';
-      expect(validateTransferNote(unicodeNoteOver)).toBe(`Note must be ${MAX_NOTE_LENGTH} characters or less`);
+      expect(validateTransferNote(unicodeNoteOver)).toBe(
+        `Note must be ${MAX_NOTE_LENGTH} characters or less`
+      );
     });
 
     it('should handle very long strings efficiently', () => {

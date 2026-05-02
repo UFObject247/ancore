@@ -12,11 +12,11 @@ describe('formatFiatAmount', () => {
   });
 
   it('formats JPY with ja-JP locale and handles zero decimal rounding', () => {
-    const result = formatFiatAmount(1234.56, { 
-      currency: 'JPY', 
+    const result = formatFiatAmount(1234.56, {
+      currency: 'JPY',
       locale: 'ja-JP',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     });
     expect(result).toBe('￥1,235'); // Rounds up due to half-expand rounding
   });

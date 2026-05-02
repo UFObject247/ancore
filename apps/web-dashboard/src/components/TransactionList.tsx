@@ -1,5 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, EmptyState } from '@ancore/ui-kit';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  EmptyState,
+} from '@ancore/ui-kit';
 import { Download, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Transaction } from '../types/dashboard';
 import { useTableDensity } from '../contexts/TableDensityContext';
@@ -33,7 +41,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     const sorted = [...allTransactions];
     sorted.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortField) {
         case 'date':
           comparison = a.timestamp.getTime() - b.timestamp.getTime();
@@ -45,19 +53,21 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           comparison = a.status.localeCompare(b.status);
           break;
       }
-      
+
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-    
+
     // Keep optimistic transaction at the top regardless of sort
     if (optimisticTransaction) {
-      const optimisticIndex = sorted.findIndex((tx: Transaction) => tx.id === optimisticTransaction.id);
+      const optimisticIndex = sorted.findIndex(
+        (tx: Transaction) => tx.id === optimisticTransaction.id
+      );
       if (optimisticIndex > 0) {
         const [optimistic] = sorted.splice(optimisticIndex, 1);
         sorted.unshift(optimistic);
       }
     }
-    
+
     return sorted;
   }, [allTransactions, sortField, sortDirection, optimisticTransaction]);
 
@@ -66,7 +76,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection((prev: SortDirection) => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev: SortDirection) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortDirection('desc');
@@ -116,7 +126,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   const densityPadding = density === 'compact' ? 'py-1' : 'py-2';
 
-  const SortHeader: React.FC<{ field: SortField; label: string }> = ({ field, label }: { field: SortField; label: string }) => (
+  const SortHeader: React.FC<{ field: SortField; label: string }> = ({
+    field,
+    label,
+  }: {
+    field: SortField;
+    label: string;
+  }) => (
     <Button
       variant="ghost"
       size="sm"
@@ -125,9 +141,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     >
       <span className="flex items-center gap-1">
         {label}
-        {sortField === field && (
-          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-        )}
+        {sortField === field &&
+          (sortDirection === 'asc' ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          ))}
       </span>
     </Button>
   );

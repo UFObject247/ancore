@@ -1,4 +1,9 @@
-import { encryptSecretKey, decryptSecretKey, UnsupportedVersionError, InvalidPayloadError } from '../encryption';
+import {
+  encryptSecretKey,
+  decryptSecretKey,
+  UnsupportedVersionError,
+  InvalidPayloadError,
+} from '../encryption';
 
 describe('Encryption Roundtrip', () => {
   const secretKey = 'SABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -21,17 +26,13 @@ describe('Encryption Roundtrip', () => {
     const encrypted = await encryptSecretKey(secretKey, password);
     const malformed = { ...encrypted, version: 999 };
     // @ts-expect-error intentional bad payload for runtime validation
-    await expect(decryptSecretKey(malformed, password)).rejects.toThrow(
-      UnsupportedVersionError
-    );
+    await expect(decryptSecretKey(malformed, password)).rejects.toThrow(UnsupportedVersionError);
   });
 
   it('should fail with missing fields in payload', async () => {
     const encrypted = await encryptSecretKey(secretKey, password);
     const { salt: _salt, ...incomplete } = encrypted;
     // @ts-expect-error intentional incomplete payload
-    await expect(decryptSecretKey(incomplete, password)).rejects.toThrow(
-      InvalidPayloadError
-    );
+    await expect(decryptSecretKey(incomplete, password)).rejects.toThrow(InvalidPayloadError);
   });
 });

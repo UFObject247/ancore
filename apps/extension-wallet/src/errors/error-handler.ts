@@ -148,18 +148,25 @@ export class ErrorHandler {
   extractErrorCode(error: unknown): string | undefined {
     try {
       const normalized = normalizeError(error);
-      return normalized.code;
-    } catch {
-      // Fallback to previous heuristics
-      if (error instanceof Error) {
-        const codeMatch = error.message.match(/\b([A-Z][A-Z0-9_]+)\b/);
-        if (codeMatch) return codeMatch[1];
-        const statusMatch = error.message.match(/\b(4\d{2}|5\d{2})\b/);
-        if (statusMatch) return statusMatch[1];
-        if ('code' in error && typeof (error as any).code === 'string') return (error as any).code;
+      if (normalized.code && normalized.code !== ErrorCategory.UNKNOWN) {
+        return normalized.code;
       }
-      return undefined;
+    } catch {}
+
+    // Fallback to previous heuristics
+    if (error instanceof Error) {
+      if ('code' in error && typeof (error as { code?: unknown }).code === 'string') {
+        return (error as { code: string }).code;
+      }
+
+      const codeMatch = error.message.match(/\b([A-Z][A-Z0-9_]+)\b/);
+      if (codeMatch) return codeMatch[1];
+
+      const statusMatch = error.message.match(/\b(4\d{2}|5\d{2})\b/);
+      if (statusMatch) return statusMatch[1];
     }
+
+    return undefined;
   }
 
   /**

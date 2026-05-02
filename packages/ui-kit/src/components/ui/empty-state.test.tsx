@@ -15,22 +15,12 @@ describe('EmptyState', () => {
   });
 
   it('renders the action if provided', () => {
-    render(
-      <EmptyState
-        title="Title"
-        action={<button>Click Me</button>}
-      />
-    );
+    render(<EmptyState title="Title" action={<button>Click Me</button>} />);
     expect(screen.getByRole('button', { name: 'Click Me' })).toBeInTheDocument();
   });
 
   it('renders the icon if provided', () => {
-    render(
-      <EmptyState
-        title="Title"
-        icon={<div data-testid="test-icon">Icon</div>}
-      />
-    );
+    render(<EmptyState title="Title" icon={<div data-testid="test-icon">Icon</div>} />);
     expect(screen.getByTestId('test-icon')).toBeInTheDocument();
   });
 });

@@ -36,10 +36,10 @@ describe('HomeScreen', () => {
     // Should show skeletons for balance
     const skeletons = screen.getAllByTestId('skeleton');
     expect(skeletons.length).toBeGreaterThan(0);
-    
+
     // Check for the specific balance skeleton
     expect(skeletons[0].className).toContain('w-32');
-    
+
     // Should NOT show the balance amount
     expect(screen.queryByText(/XLM/)).toBeNull();
   });
@@ -56,7 +56,7 @@ describe('HomeScreen', () => {
 
     // Should show the formatted balance
     expect(screen.getByText('125.50 XLM')).toBeDefined();
-    
+
     // Should NOT show skeletons
     expect(screen.queryByTestId('skeleton')).toBeNull();
   });

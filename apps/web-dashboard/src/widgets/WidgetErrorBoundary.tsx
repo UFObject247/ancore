@@ -30,10 +30,7 @@ export const WidgetErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ c
   const logError = useWidgetErrorLogger();
 
   return (
-    <ErrorBoundary
-      FallbackComponent={WidgetErrorFallback}
-      onError={logError}
-    >
+    <ErrorBoundary FallbackComponent={WidgetErrorFallback} onError={logError}>
       {children}
     </ErrorBoundary>
   );

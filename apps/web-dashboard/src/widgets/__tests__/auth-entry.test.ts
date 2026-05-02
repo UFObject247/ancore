@@ -41,11 +41,11 @@ describe('Auth-Entry Payload Builder - Test Matrix', () => {
 
     it.each(validMatrix)('builds payload successfully - $scenario', ({ input }) => {
       const payload = buildAuthEntryPayload(input);
-      
+
       expect(payload).toBeDefined();
       expect(payload.contractId).toBe(input.contractId);
       expect(payload.nonce).toBe(input.nonce);
-      
+
       if (input.signature) {
         expect(payload.signature).toBe(input.signature);
       }

@@ -27,8 +27,12 @@ function makeStorage(initial: Record<string, string> = {}): ISecureStorage {
   const store = { ...initial };
   return {
     getItem: jest.fn(async (key) => store[key] ?? null),
-    setItem: jest.fn(async (key, value) => { store[key] = value; }),
-    removeItem: jest.fn(async (key) => { delete store[key]; }),
+    setItem: jest.fn(async (key, value) => {
+      store[key] = value;
+    }),
+    removeItem: jest.fn(async (key) => {
+      delete store[key];
+    }),
   };
 }
 
@@ -214,10 +218,7 @@ describe('BiometricLockoutManager', () => {
       await mgr.initialize();
 
       await mgr.recordFailure('AUTHENTICATION_FAILED');
-      expect(storage.setItem).toHaveBeenCalledWith(
-        LOCKOUT_STORAGE_KEY,
-        expect.any(String),
-      );
+      expect(storage.setItem).toHaveBeenCalledWith(LOCKOUT_STORAGE_KEY, expect.any(String));
     });
 
     it('calls storage.removeItem on reset', async () => {

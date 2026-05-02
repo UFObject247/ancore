@@ -4,11 +4,7 @@ type Props = {
   message: string | null;
 };
 
-export const AttemptsIndicator = ({
-  attemptsRemaining,
-  maxAttempts,
-  message,
-}: Props) => {
+export const AttemptsIndicator = ({ attemptsRemaining, maxAttempts, message }: Props) => {
   return (
     <section aria-label={`${attemptsRemaining} of ${maxAttempts} attempts remaining`}>
       <ul aria-hidden="true">
@@ -16,9 +12,7 @@ export const AttemptsIndicator = ({
           <li key={i} data-used={i >= attemptsRemaining} />
         ))}
       </ul>
-      {message && (
-        <p aria-live="polite">{message}</p>
-      )}
+      {message && <p aria-live="polite">{message}</p>}
     </section>
   );
 };

@@ -4,11 +4,7 @@ type Props = {
   message: string | null;
 };
 
-export const BiometricLockoutBanner = ({
-  isPermanent,
-  secondsRemaining,
-  message,
-}: Props) => {
+export const BiometricLockoutBanner = ({ isPermanent, secondsRemaining, message }: Props) => {
   const title = isPermanent
     ? 'Biometric authentication disabled'
     : `Temporarily locked — ${secondsRemaining}s remaining`;

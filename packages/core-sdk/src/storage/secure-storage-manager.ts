@@ -1,4 +1,10 @@
-import { AccountData, EncryptedPayload, RecentRecipientsData, SessionKeysData, StorageAdapter } from './types';
+import {
+  AccountData,
+  EncryptedPayload,
+  RecentRecipientsData,
+  SessionKeysData,
+  StorageAdapter,
+} from './types';
 
 function toArrayBufferView(value: Uint8Array): Uint8Array<ArrayBuffer> {
   const normalized = new Uint8Array(new ArrayBuffer(value.byteLength));

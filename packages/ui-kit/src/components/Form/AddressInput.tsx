@@ -25,8 +25,10 @@ export interface RecentRecipientPick {
   name?: string;
 }
 
-export interface AddressInputBaseProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
+export interface AddressInputBaseProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'type'
+> {
   /** Field label */
   label?: string;
   /** Validation error message */

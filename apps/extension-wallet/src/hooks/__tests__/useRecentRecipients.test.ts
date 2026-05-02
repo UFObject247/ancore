@@ -7,7 +7,9 @@ const mockSaveRecentRecipients = vi.fn();
 
 vi.mock('@ancore/core-sdk', () => ({
   SecureStorageManager: class {
-    get isUnlocked() { return true; }
+    get isUnlocked() {
+      return true;
+    }
     getRecentRecipients = mockGetRecentRecipients;
     saveRecentRecipients = mockSaveRecentRecipients;
   },
@@ -22,14 +24,14 @@ describe('useRecentRecipients', () => {
 
   it('loads recipients on mount', async () => {
     mockGetRecentRecipients.mockResolvedValue({
-      recipients: [{ address: 'G123', timestamp: 100 }]
+      recipients: [{ address: 'G123', timestamp: 100 }],
     });
 
     const { result } = renderHook(() => useRecentRecipients());
-    
+
     // Wait for useEffect
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(result.current.recipients).toHaveLength(1);
@@ -38,7 +40,7 @@ describe('useRecentRecipients', () => {
 
   it('adds new recipients and limits to 5', async () => {
     mockGetRecentRecipients.mockResolvedValue({ recipients: [] });
-    
+
     const { result } = renderHook(() => useRecentRecipients());
 
     await act(async () => {
@@ -67,15 +69,15 @@ describe('useRecentRecipients', () => {
     mockGetRecentRecipients.mockResolvedValue({
       recipients: [
         { address: 'G1', timestamp: 100 },
-        { address: 'G2', timestamp: 200 }
-      ]
+        { address: 'G2', timestamp: 200 },
+      ],
     });
 
     const { result } = renderHook(() => useRecentRecipients());
 
     // Wait for load
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     await act(async () => {

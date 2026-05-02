@@ -70,9 +70,7 @@ export function ReviewScreen({ transaction, onBack, onConfirm }: ReviewScreenPro
         </div>
 
         {/* Transfer Note */}
-        {transaction.truncatedNote && (
-          <TransferNotePreview note={transaction.truncatedNote} />
-        )}
+        {transaction.truncatedNote && <TransferNotePreview note={transaction.truncatedNote} />}
 
         {/* Fees Summary */}
         <div className="space-y-3 bg-white/5 border border-white/10 rounded-2xl p-5">

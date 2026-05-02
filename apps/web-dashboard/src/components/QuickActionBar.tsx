@@ -19,13 +19,13 @@ export const QuickActionBar: React.FC = () => {
           key={label}
           onClick={() => navigate(path)}
           className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200",
-            "hover:bg-accent hover:shadow-sm active:scale-95",
-            "text-sm font-medium"
+            'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200',
+            'hover:bg-accent hover:shadow-sm active:scale-95',
+            'text-sm font-medium'
           )}
           aria-label={label}
         >
-          <Icon className={cn("w-4 h-4", color)} />
+          <Icon className={cn('w-4 h-4', color)} />
           <span className="hidden md:inline">{label}</span>
         </button>
       ))}

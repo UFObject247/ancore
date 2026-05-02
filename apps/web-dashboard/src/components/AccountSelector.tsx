@@ -40,15 +40,11 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setHighlightedIndex((prev) => 
-            prev < filteredAccounts.length - 1 ? prev + 1 : 0
-          );
+          setHighlightedIndex((prev) => (prev < filteredAccounts.length - 1 ? prev + 1 : 0));
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setHighlightedIndex((prev) => 
-            prev > 0 ? prev - 1 : filteredAccounts.length - 1
-          );
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredAccounts.length - 1));
           break;
         case 'Enter':
           e.preventDefault();
@@ -80,16 +76,13 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
     [onAccountChange]
   );
 
-  const handleClickOutside = useCallback(
-    (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        setSearchQuery('');
-        setHighlightedIndex(-1);
-      }
-    },
-    []
-  );
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      setIsOpen(false);
+      setSearchQuery('');
+      setHighlightedIndex(-1);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -136,11 +129,11 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
         <span className="font-medium">
           {currentAccount ? formatAddress(currentAccount.address) : 'Select Account'}
         </span>
-        <ChevronDown 
+        <ChevronDown
           className={cn(
             'w-4 h-4 text-muted-foreground transition-transform',
             isOpen && 'rotate-180'
-          )} 
+          )}
         />
       </button>
 
@@ -180,9 +173,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
                     >
                       <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {formatAddress(account.address)}
-                        </div>
+                        <div className="font-medium truncate">{formatAddress(account.address)}</div>
                         <div className="text-xs text-muted-foreground">
                           Balance: {account.balance.toFixed(2)} • Status: {account.status}
                         </div>
@@ -195,9 +186,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
                 ))}
               </ul>
             ) : (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No accounts found
-              </div>
+              <div className="p-4 text-center text-sm text-muted-foreground">No accounts found</div>
             )}
           </div>
         </div>

@@ -1,8 +1,6 @@
-
 import type { IBiometricAuthService, IPasswordAuthService } from './hooks/useBiometricUnlock';
 import type { BiometricFailureReason } from './biometric-lockout.types';
 import type { SecureStoreAdapter } from '../storage/types';
-
 
 function decodeBase64Url(input: string): ArrayBuffer {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -87,7 +85,7 @@ function mapWebAuthnError(err: unknown): BiometricFailureReason {
   return 'UNKNOWN';
 }
 
-// Password auth adapter 
+// Password auth adapter
 export class WalletPasswordAuthService implements IPasswordAuthService {
   private verifyPassword: (pw: string) => Promise<boolean>;
 
@@ -100,7 +98,7 @@ export class WalletPasswordAuthService implements IPasswordAuthService {
   }
 }
 
-// Secure storage adapter 
+// Secure storage adapter
 export function makeSecureStorageAdapter(store: SecureStoreAdapter) {
   return {
     getItem: (key: string) => store.get<string>(key),
@@ -108,4 +106,3 @@ export function makeSecureStorageAdapter(store: SecureStoreAdapter) {
     removeItem: (key: string) => store.remove(key),
   };
 }
-

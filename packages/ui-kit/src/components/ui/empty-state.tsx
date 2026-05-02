@@ -27,9 +27,7 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
         )}
         <h3 className="mb-2 text-lg font-semibold tracking-tight">{title}</h3>
         {description && (
-          <p className="mb-4 text-sm text-muted-foreground max-w-sm">
-            {description}
-          </p>
+          <p className="mb-4 text-sm text-muted-foreground max-w-sm">{description}</p>
         )}
         {action && <div className="mt-2">{action}</div>}
       </div>

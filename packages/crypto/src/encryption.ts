@@ -13,12 +13,17 @@ const DECRYPT_FAILURE_MESSAGE = 'Invalid password or corrupted encrypted payload
 
 // Supported encryption payload versions
 const SUPPORTED_VERSIONS = [1] as const;
-type SupportedVersion = typeof SUPPORTED_VERSIONS[number];
+type SupportedVersion = (typeof SUPPORTED_VERSIONS)[number];
 
 // Error classes for better error handling
 export class UnsupportedVersionError extends Error {
-  constructor(public readonly detectedVersion: number, public readonly supportedVersions: readonly number[]) {
-    super(`Unsupported encryption payload version: ${detectedVersion}. Supported versions: [${supportedVersions.join(', ')}]`);
+  constructor(
+    public readonly detectedVersion: number,
+    public readonly supportedVersions: readonly number[]
+  ) {
+    super(
+      `Unsupported encryption payload version: ${detectedVersion}. Supported versions: [${supportedVersions.join(', ')}]`
+    );
     this.name = 'UnsupportedVersionError';
   }
 }
@@ -204,7 +209,7 @@ export async function decryptSecretKey(
     if (error instanceof UnsupportedVersionError || error instanceof InvalidPayloadError) {
       throw error;
     }
-    
+
     // Wrap other errors as generic decryption failure
     throw new InvalidPayloadError(DECRYPT_FAILURE_MESSAGE);
   }

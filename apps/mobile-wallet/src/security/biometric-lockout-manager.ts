@@ -1,4 +1,3 @@
-
 import {
   BIOMETRIC_MAX_ATTEMPTS,
   LOCKOUT_DURATION_MS,
@@ -29,13 +28,13 @@ export class BiometricLockoutManager {
       try {
         const persisted: BiometricLockoutState = JSON.parse(raw);
         // Basic shape validation
-      if (
-        typeof persisted.failedAttempts !== 'number' ||
-        typeof persisted.permanentlyLocked !== 'boolean' ||
-        (persisted.lockedUntil !== null && typeof persisted.lockedUntil !== 'number')
-      ) {
-         throw new Error('Invalid state shape');
-       }
+        if (
+          typeof persisted.failedAttempts !== 'number' ||
+          typeof persisted.permanentlyLocked !== 'boolean' ||
+          (persisted.lockedUntil !== null && typeof persisted.lockedUntil !== 'number')
+        ) {
+          throw new Error('Invalid state shape');
+        }
         this.state = persisted;
         // Auto-clear expired time-based lockout on load
         if (this.isTimedLockoutExpired()) {
@@ -48,7 +47,7 @@ export class BiometricLockoutManager {
     }
   }
 
-  // State Accessors 
+  // State Accessors
   getState(): Readonly<BiometricLockoutState> {
     return { ...this.state };
   }
@@ -71,7 +70,7 @@ export class BiometricLockoutManager {
     return this.state.permanentlyLocked;
   }
 
-  // Failure Recording 
+  // Failure Recording
   async recordFailure(reason: BiometricFailureReason): Promise<BiometricLockoutState> {
     if (reason === 'LOCKOUT_PERMANENT') {
       return this.setPermanentLockout(reason);
@@ -102,9 +101,8 @@ export class BiometricLockoutManager {
     return this.getState() as BiometricLockoutState;
   }
 
-  // Success Handling 
+  // Success Handling
 
-  
   async recordSuccess(): Promise<void> {
     await this.reset();
   }
@@ -115,7 +113,7 @@ export class BiometricLockoutManager {
     await this.storage.removeItem(LOCKOUT_STORAGE_KEY);
   }
 
-  // Private Helpers 
+  // Private Helpers
   private async setTimedLockout(reason: BiometricFailureReason): Promise<BiometricLockoutState> {
     this.state = {
       ...this.state,
@@ -126,7 +124,9 @@ export class BiometricLockoutManager {
     return this.getState() as BiometricLockoutState;
   }
 
-  private async setPermanentLockout(reason: BiometricFailureReason): Promise<BiometricLockoutState> {
+  private async setPermanentLockout(
+    reason: BiometricFailureReason
+  ): Promise<BiometricLockoutState> {
     this.state = {
       ...this.state,
       permanentlyLocked: true,

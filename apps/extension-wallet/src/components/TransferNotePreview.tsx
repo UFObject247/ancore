@@ -11,7 +11,7 @@ interface TransferNotePreviewProps {
 
 /**
  * TransferNotePreview - A component for safely displaying transfer notes
- * 
+ *
  * Features:
  * - Safe HTML rendering (XSS protection)
  * - Automatic truncation to 140 characters
@@ -37,16 +37,16 @@ export function TransferNotePreview({
         {showIcon && <MessageSquare className="w-3.5 h-3.5" />}
         Note
       </div>
-      
+
       <div className="relative">
         <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3">
-          <p 
+          <p
             className="text-sm text-slate-200 leading-relaxed break-words whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ 
-              __html: displayNote.replace(/\n/g, '<br />') 
+            dangerouslySetInnerHTML={{
+              __html: displayNote.replace(/\n/g, '<br />'),
             }}
           />
-          
+
           {wasTruncated && (
             <div className="text-xs text-slate-500 italic mt-2">
               Note truncated to {140} characters
@@ -61,9 +61,9 @@ export function TransferNotePreview({
 /**
  * MinimalNotePreview - A compact version for tight spaces
  */
-export function MinimalNotePreview({ 
-  note, 
-  className = '' 
+export function MinimalNotePreview({
+  note,
+  className = '',
 }: Omit<TransferNotePreviewProps, 'showIcon' | 'truncated'>) {
   if (isNoteEmpty(note)) {
     return null;
@@ -76,15 +76,13 @@ export function MinimalNotePreview({
     <div className={`flex items-start gap-2 ${className}`}>
       <MessageSquare className="w-3 h-3 text-slate-500 mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0">
-        <p 
+        <p
           className="text-xs text-slate-300 leading-relaxed break-words"
-          dangerouslySetInnerHTML={{ 
-            __html: displayNote.replace(/\n/g, '<br />') 
+          dangerouslySetInnerHTML={{
+            __html: displayNote.replace(/\n/g, '<br />'),
           }}
         />
-        {wasTruncated && (
-          <span className="text-xs text-slate-500 italic ml-1">...</span>
-        )}
+        {wasTruncated && <span className="text-xs text-slate-500 italic ml-1">...</span>}
       </div>
     </div>
   );

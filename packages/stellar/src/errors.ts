@@ -74,11 +74,17 @@ export class RetryExhaustedError extends StellarError {
 /** Map stellar package errors into a small canonical shape consumable by core-sdk */
 export function toCanonicalError(err: unknown) {
   if (err instanceof StellarError) {
-    const anyErr = err as any;
-    return { code: anyErr.resultCode ?? anyErr.name ?? 'STELLAR_ERROR', message: err.message, name: err.name, resultXdr: anyErr.resultXdr };
+    const typedErr = err as StellarError & { resultCode?: string; resultXdr?: string };
+    return {
+      code: typedErr.resultCode ?? typedErr.name ?? 'STELLAR_ERROR',
+      message: err.message,
+      name: err.name,
+      resultXdr: typedErr.resultXdr,
+    };
   }
   if (err instanceof Error) {
-    return { code: (err as any).code ?? 'STELLAR_ERROR', message: err.message, name: err.name };
+    const typedErr = err as Error & { code?: string };
+    return { code: typedErr.code ?? 'STELLAR_ERROR', message: err.message, name: err.name };
   }
   return { code: 'STELLAR_ERROR', message: String(err) };
 }

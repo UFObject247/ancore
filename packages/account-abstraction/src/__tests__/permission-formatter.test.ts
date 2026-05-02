@@ -78,9 +78,7 @@ describe('permission formatter', () => {
     });
 
     it('formats all known permissions', () => {
-      expect(formatPermissions([0, 1, 2])).toBe(
-        'Send Payment, Manage Data, Invoke Contract'
-      );
+      expect(formatPermissions([0, 1, 2])).toBe('Send Payment, Manage Data, Invoke Contract');
     });
 
     it('handles unknown permissions in formatted string', () => {

@@ -1,5 +1,9 @@
 import React from 'react';
-import { validateTransferNote, getRemainingCharacters, MAX_NOTE_LENGTH } from '@/utils/note-validation';
+import {
+  validateTransferNote,
+  getRemainingCharacters,
+  MAX_NOTE_LENGTH,
+} from '@/utils/note-validation';
 
 interface TransferNoteInputProps {
   value: string;
@@ -13,7 +17,7 @@ interface TransferNoteInputProps {
 
 /**
  * TransferNoteInput - A textarea component for entering transfer notes
- * 
+ *
  * Features:
  * - 140-character limit enforcement
  * - Real-time character counter
@@ -35,7 +39,7 @@ export function TransferNoteInput({
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;
-    
+
     // Allow typing but validate for error display
     onChange(newValue);
   };
@@ -69,25 +73,18 @@ export function TransferNoteInput({
           rows={3}
           maxLength={MAX_NOTE_LENGTH + 10} // Allow slight over-typing for better UX
         />
-        
+
         {/* Character counter */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1">
           <span
             className={`
               text-[10px] font-mono font-medium transition-colors
-              ${isOverLimit 
-                ? 'text-red-400' 
-                : isNearLimit 
-                  ? 'text-amber-400' 
-                  : 'text-slate-600'
-              }
+              ${isOverLimit ? 'text-red-400' : isNearLimit ? 'text-amber-400' : 'text-slate-600'}
             `}
           >
             {Math.abs(remainingChars)}
           </span>
-          <span className="text-[8px] text-slate-600 font-medium">
-            /{MAX_NOTE_LENGTH}
-          </span>
+          <span className="text-[8px] text-slate-600 font-medium">/{MAX_NOTE_LENGTH}</span>
         </div>
       </div>
 

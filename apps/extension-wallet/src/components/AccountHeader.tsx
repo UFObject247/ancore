@@ -32,10 +32,15 @@ export function AccountHeader({
                   ? 'Environment: Production (Horizon Mainnet)'
                   : network.toLowerCase() === 'staging'
                     ? 'Environment: Staging (Horizon Testnet)'
-                    : 'Environment: Sandbox (Horizon Testnet)'
+                    : network.toLowerCase() === 'testnet'
+                      ? 'Environment: Sandbox (Horizon Testnet)'
+                      : `Environment: ${network}`
               }
             >
-              <div tabIndex={0} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded cursor-help">
+              <div
+                tabIndex={0}
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded cursor-help"
+              >
                 <Badge
                   variant="outline"
                   className="border-primary/30 bg-primary/5 text-primary font-medium"

@@ -12,13 +12,13 @@ const MOCK_ACCOUNTS: AccountData[] = [
   },
   {
     address: 'GDEF789GHI012JKL345MNO678PQR901STU234VWX567YZA890BCD',
-    balance: 845.20,
+    balance: 845.2,
     status: 'active',
     lastActivity: new Date('2026-04-23T15:30:00Z'),
   },
   {
     address: 'GJKL345MNO678PQR901STU234VWX567YZA890BCD123DEF456GHI',
-    balance: 2100.00,
+    balance: 2100.0,
     status: 'inactive',
     lastActivity: new Date('2026-04-20T09:15:00Z'),
   },
@@ -50,7 +50,13 @@ export function useAccountState(): UseAccountStateReturn {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed && parsed.address && parsed.balance !== undefined && parsed.status && parsed.lastActivity) {
+        if (
+          parsed &&
+          parsed.address &&
+          parsed.balance !== undefined &&
+          parsed.status &&
+          parsed.lastActivity
+        ) {
           return {
             ...parsed,
             lastActivity: new Date(parsed.lastActivity),
@@ -82,11 +88,11 @@ export function useAccountState(): UseAccountStateReturn {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 300));
       setAccounts(MOCK_ACCOUNTS);
-      
+
       // Set current account from storage or default to first account
       const storedAccount = getStoredAccount();
       if (storedAccount) {
-        const foundAccount = MOCK_ACCOUNTS.find(acc => acc.address === storedAccount.address);
+        const foundAccount = MOCK_ACCOUNTS.find((acc) => acc.address === storedAccount.address);
         if (foundAccount) {
           setCurrentAccountState(foundAccount);
         } else {
@@ -102,10 +108,13 @@ export function useAccountState(): UseAccountStateReturn {
     }
   }, [getStoredAccount]);
 
-  const setCurrentAccount = useCallback((account: AccountData) => {
-    setCurrentAccountState(account);
-    saveAccount(account);
-  }, [saveAccount]);
+  const setCurrentAccount = useCallback(
+    (account: AccountData) => {
+      setCurrentAccountState(account);
+      saveAccount(account);
+    },
+    [saveAccount]
+  );
 
   const refetch = useCallback(() => {
     fetchAccounts();

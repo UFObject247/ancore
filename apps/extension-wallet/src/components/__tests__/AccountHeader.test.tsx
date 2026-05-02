@@ -39,17 +39,23 @@ describe('AccountHeader', () => {
   describe('Network Badge Tooltip', () => {
     it('displays Sandbox environment for Testnet', () => {
       render(<AccountHeader {...defaultProps} network="Testnet" />);
-      expect(screen.getByTestId('tooltip-content')).toHaveTextContent('Environment: Sandbox (Horizon Testnet)');
+      expect(screen.getByTestId('tooltip-content')).toHaveTextContent(
+        'Environment: Sandbox (Horizon Testnet)'
+      );
     });
 
     it('displays Production environment for Mainnet', () => {
       render(<AccountHeader {...defaultProps} network="Mainnet" />);
-      expect(screen.getByTestId('tooltip-content')).toHaveTextContent('Environment: Production (Horizon Mainnet)');
+      expect(screen.getByTestId('tooltip-content')).toHaveTextContent(
+        'Environment: Production (Horizon Mainnet)'
+      );
     });
 
     it('displays Staging environment for Staging', () => {
       render(<AccountHeader {...defaultProps} network="Staging" />);
-      expect(screen.getByTestId('tooltip-content')).toHaveTextContent('Environment: Staging (Horizon Testnet)');
+      expect(screen.getByTestId('tooltip-content')).toHaveTextContent(
+        'Environment: Staging (Horizon Testnet)'
+      );
     });
 
     it('displays fallback environment for unknown network', () => {
