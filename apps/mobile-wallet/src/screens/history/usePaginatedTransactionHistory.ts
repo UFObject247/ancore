@@ -19,7 +19,6 @@ type State = {
   isLoadingMore: boolean;
   isRefreshing: boolean;
   error: HistoryError | null;
-  retryCount: number;
 };
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -52,7 +51,6 @@ export const usePaginatedTransactionHistory = ({
     isLoadingMore: false,
     isRefreshing: false,
     error: null,
-    retryCount: 0,
   });
 
   const requestIdRef = useRef(0);
@@ -111,7 +109,6 @@ export const usePaginatedTransactionHistory = ({
             isLoadingMore: false,
             isRefreshing: false,
             error: historyError,
-            retryCount: 0,
           };
         });
       }

@@ -14,6 +14,7 @@ describe('validateSchedule', () => {
 
   it('accepts a valid schedule', () => {
     const future = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    // datetime-local expects local time without a timezone suffix; toISOString() emits UTC.
     const offsetMs = future.getTimezoneOffset() * 60 * 1000;
     const startAt = new Date(future.getTime() - offsetMs).toISOString().slice(0, 16);
 

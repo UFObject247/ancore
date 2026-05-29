@@ -32,9 +32,22 @@ describe('Field', () => {
     expect(screen.getByLabelText('Recipient')).toHaveAttribute('id', 'recipient-address');
   });
 
+  it('forwards required state to native controls', () => {
+    render(
+      <Field label="Destination" required>
+        <Input />
+      </Field>
+    );
+
+    const input = screen.getByLabelText(/Destination/);
+
+    expect(input).toBeRequired();
+    expect(input).toHaveAttribute('aria-required', 'true');
+  });
+
   it('supports render-prop controls with custom markup', () => {
     render(
-      <Field label="Note" description="Visible only to you.">
+      <Field label="Note" description="Visible only to you." required>
         {({ controlProps }) => (
           <div>
             <textarea {...controlProps} />
@@ -44,12 +57,13 @@ describe('Field', () => {
       </Field>
     );
 
-    const textarea = screen.getByLabelText('Note');
+    const textarea = screen.getByLabelText(/Note/);
 
     expect(textarea).toHaveAttribute(
       'aria-describedby',
       screen.getByText('Visible only to you.').id
     );
+    expect(textarea).toHaveAttribute('aria-required', 'true');
     expect(screen.getByText('140')).toBeInTheDocument();
   });
 });

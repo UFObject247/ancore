@@ -5,6 +5,8 @@ type FieldControlProps = {
   id?: string;
   'aria-describedby'?: string;
   'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-required'?: boolean | 'true' | 'false';
+  required?: boolean;
 };
 
 type FieldRenderProps = {
@@ -40,6 +42,8 @@ const Field = React.forwardRef<HTMLDivElement, FieldProps>(
       id: inputId,
       'aria-describedby': describedBy,
       'aria-invalid': error ? true : childProps?.['aria-invalid'],
+      'aria-required': required ? true : childProps?.['aria-required'],
+      ...(required ? { required: true } : {}),
     };
 
     const control =

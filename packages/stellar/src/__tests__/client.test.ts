@@ -473,6 +473,17 @@ describe('StellarClient', () => {
       expect(horizon.submitTransaction).toHaveBeenCalledWith(mockTransaction);
     });
 
+    it('should surface XDR decode errors before submission', async () => {
+      const client = new StellarClient({ network: 'testnet', retryOptions: fastRetryOptions });
+      const horizon = getHorizonMock(client);
+      mockTransactionFromXDR.mockImplementationOnce(() => {
+        throw new Error('malformed XDR');
+      });
+
+      await expect(client.submitTransaction('bad-xdr')).rejects.toThrow('malformed XDR');
+      expect(horizon.submitTransaction).not.toHaveBeenCalled();
+    });
+
     it('should throw TransactionError when Horizon returns result codes', async () => {
       const client = new StellarClient({ network: 'testnet', retryOptions: fastRetryOptions });
       const horizon = getHorizonMock(client);
@@ -489,6 +500,28 @@ describe('StellarClient', () => {
       });
 
       await expect(client.submitTransaction(mockTransaction)).rejects.toThrow(TransactionError);
+    });
+
+    it('should not retry permanent Horizon transaction errors', async () => {
+      const client = new StellarClient({
+        network: 'testnet',
+        retryOptions: { maxRetries: 2, baseDelayMs: 0 },
+      });
+      const horizon = getHorizonMock(client);
+      horizon.submitTransaction.mockRejectedValue({
+        response: {
+          data: {
+            extras: {
+              result_codes: {
+                transaction: 'tx_bad_seq',
+              },
+            },
+          },
+        },
+      });
+
+      await expect(client.submitTransaction(mockTransaction)).rejects.toThrow(TransactionError);
+      expect(horizon.submitTransaction).toHaveBeenCalledTimes(1);
     });
 
     it('should preserve Horizon transaction result details on TransactionError', async () => {

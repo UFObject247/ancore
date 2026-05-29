@@ -4,7 +4,7 @@ export interface ParsedPaymentUri {
 }
 
 const SUPPORTED_SCHEMES = new Set(['stellar', 'web+stellar']);
-const DESTINATION_RE = /^G[A-Z0-9]{55}$/;
+const DESTINATION_RE = /^G[A-Z2-7]{55}$/;
 
 function isValidAmount(amount: string): boolean {
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,7})?$/.test(amount)) {

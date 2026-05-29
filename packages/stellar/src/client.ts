@@ -447,12 +447,28 @@ export class StellarClient {
   async submitTransaction(
     transaction: Transaction | string
   ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> {
+    const signedTransaction = this.resolveSignedTransaction(transaction);
+    const callerIsRetryable = this.retryOptions.isRetryable;
+    const retryOptions: RetryOptions = {
+      ...this.retryOptions,
+      isRetryable: (error) => {
+        if (error instanceof TransactionError) {
+          return false;
+        }
+
+        if (callerIsRetryable) {
+          return callerIsRetryable(error);
+        }
+
+        const statusCode = this.getErrorStatusCode(error);
+        return statusCode === undefined || statusCode === 429 || statusCode >= 500;
+      },
+    };
+
     try {
       return await withRetry(async () => {
         try {
-          const response = await this.horizonServer.submitTransaction(
-            this.resolveSignedTransaction(transaction)
-          );
+          const response = await this.horizonServer.submitTransaction(signedTransaction);
           return response;
         } catch (error) {
           const transactionError = TransactionError.fromHorizonError(error);
@@ -464,7 +480,7 @@ export class StellarClient {
             statusCode: this.getErrorStatusCode(error),
           });
         }
-      }, this.retryOptions);
+      }, retryOptions);
     } catch (error: unknown) {
       if (error instanceof RetryExhaustedError && error.lastError) {
         if (
