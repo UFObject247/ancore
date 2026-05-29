@@ -182,13 +182,16 @@ function CreateBillForm({ onCreated }: { onCreated: (id: string) => void }) {
 
 // ── Bill list ─────────────────────────────────────────────────────────────────
 
-const BILL_STATUS_CONFIG: Record<
-  SplitBillStatus,
-  { icon: ReactNode; className: string }
-> = {
+const BILL_STATUS_CONFIG: Record<SplitBillStatus, { icon: ReactNode; className: string }> = {
   open: { icon: <Clock className="w-3.5 h-3.5" />, className: 'text-blue-600 bg-blue-50' },
-  completed: { icon: <CheckCircle className="w-3.5 h-3.5" />, className: 'text-green-600 bg-green-50' },
-  expired: { icon: <AlertCircle className="w-3.5 h-3.5" />, className: 'text-slate-500 bg-slate-100' },
+  completed: {
+    icon: <CheckCircle className="w-3.5 h-3.5" />,
+    className: 'text-green-600 bg-green-50',
+  },
+  expired: {
+    icon: <AlertCircle className="w-3.5 h-3.5" />,
+    className: 'text-slate-500 bg-slate-100',
+  },
   cancelled: { icon: <XCircle className="w-3.5 h-3.5" />, className: 'text-red-600 bg-red-50' },
 };
 
@@ -224,9 +227,7 @@ function BillCard({ bill, onClick }: { bill: SplitBill; onClick: () => void }) {
         <span>
           {paidCount}/{total} paid
         </span>
-        <span className="ml-auto">
-          Expires {new Date(bill.expiresAt).toLocaleDateString()}
-        </span>
+        <span className="ml-auto">Expires {new Date(bill.expiresAt).toLocaleDateString()}</span>
       </div>
 
       {/* Mini progress bar */}

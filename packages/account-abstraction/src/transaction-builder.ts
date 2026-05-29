@@ -143,7 +143,11 @@ export class TransactionBuilder {
     return contract.call('revoke_session_key', nativeToScVal(op.sessionKey));
   }
 
-  private assertSessionKeyParams(sessionKey: string, permissions: number[], expiresAt: number): void {
+  private assertSessionKeyParams(
+    sessionKey: string,
+    permissions: number[],
+    expiresAt: number
+  ): void {
     if (!sessionKey || typeof sessionKey !== 'string') {
       throw new TypeError('Session key must be a non-empty string.');
     }

@@ -5,12 +5,7 @@
  * Issue #474
  */
 
-import {
-  rootLogger,
-  createRequestLogger,
-  redactAccountId,
-  redactSessionKey,
-} from '../logger';
+import { rootLogger, createRequestLogger, redactAccountId, redactSessionKey } from '../logger';
 
 // ---------------------------------------------------------------------------
 // Helpers
