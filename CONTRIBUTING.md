@@ -99,6 +99,9 @@ We are committed to providing a welcoming and inclusive environment. Please:
    ```
 
    Follow [Conventional Commits](https://www.conventionalcommits.org/)
+   Staged TypeScript, JavaScript, JSON, and Markdown files are formatted with Prettier during
+   pre-commit. Staged source files under `packages/*`, `apps/*`, and `services/relayer` also run
+   their package-local ESLint autofix command.
 
 6. Push to your fork:
 

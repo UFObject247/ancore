@@ -66,6 +66,18 @@
     ],
     "packages/account-abstraction/src/**/*.{ts,tsx,js,jsx}": [
       "pnpm --dir packages/account-abstraction exec eslint --fix"
+    ],
+    "apps/extension-wallet/src/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir apps/extension-wallet exec eslint --fix"
+    ],
+    "apps/web-dashboard/src/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir apps/web-dashboard exec eslint --fix"
+    ],
+    "apps/mobile-wallet/src/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir apps/mobile-wallet exec eslint --fix"
+    ],
+    "services/relayer/src/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir services/relayer exec eslint --fix"
     ]
   },
   "pnpm": {

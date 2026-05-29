@@ -111,4 +111,18 @@ describe('dashboard router', () => {
 
     expect(await screen.findByRole('heading', { name: /transactions/i })).toBeInTheDocument();
   });
+
+  it('renders the bulk payouts route for authenticated users', async () => {
+    writeSession({
+      userId: 'user-1',
+      displayName: 'Ops Admin',
+      accessToken: 'token-1',
+      refreshToken: 'refresh-1',
+      accessTokenExpiresAt: Date.now() + 60_000,
+    });
+
+    render(<DashboardAppTestHarness initialEntries={['/dashboard/bulk-payouts']} />);
+
+    expect(await screen.findByRole('heading', { name: /bulk payouts/i })).toBeInTheDocument();
+  });
 });

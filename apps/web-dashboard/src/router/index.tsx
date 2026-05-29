@@ -12,6 +12,7 @@ import {
 } from 'react-router-dom';
 
 import { DashboardAuthProvider, useDashboardAuth } from '../auth';
+import { BulkPayoutsPage } from '../pages/BulkPayouts';
 import { ScheduledTransfersPage } from '../pages/ScheduledTransfers';
 import { TransactionsPage } from '../pages/transactions';
 
@@ -105,6 +106,7 @@ function DashboardLayout() {
         <nav className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
           <Link to="/dashboard">Overview</Link>
           <Link to="/dashboard/transactions">Transactions</Link>
+          <Link to="/dashboard/bulk-payouts">Bulk Payouts</Link>
           <Link to="/dashboard/scheduled-transfers">Scheduled Transfers</Link>
           <Link to="/dashboard/reports">Reports</Link>
           <Link to="/dashboard/settings">Settings</Link>
@@ -240,6 +242,7 @@ export function DashboardRouterContent() {
           <Route element={<DashboardLayout />}>
             <Route element={<OverviewPage />} path="/dashboard" />
             <Route element={<TransactionsPage />} path="/dashboard/transactions" />
+            <Route element={<BulkPayoutsPage />} path="/dashboard/bulk-payouts" />
             <Route element={<ScheduledTransfersPage />} path="/dashboard/scheduled-transfers" />
             <Route element={<ReportsPage />} path="/dashboard/reports" />
             <Route element={<SettingsPage />} path="/dashboard/settings" />
