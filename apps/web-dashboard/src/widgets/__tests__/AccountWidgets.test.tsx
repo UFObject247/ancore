@@ -107,7 +107,7 @@ import {
   MultiSigSkeleton,
   InvoiceListSkeleton,
   DashboardPageSkeleton,
-} from '../components/skeletons/LoadingSkeletons';
+} from '../../components/skeletons/LoadingSkeletons';
 
 describe('Loading Skeletons', () => {
   it('AccountOverviewSkeleton renders with default testid', () => {
