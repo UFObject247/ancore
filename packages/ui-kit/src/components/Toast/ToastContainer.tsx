@@ -1,5 +1,5 @@
 import { Toast } from './Toast';
-import type { ToastItem } from './NotificationProvider';
+import type { Toast as ToastItem } from './NotificationProvider';
 
 interface ToastContainerProps {
   toasts: ToastItem[];

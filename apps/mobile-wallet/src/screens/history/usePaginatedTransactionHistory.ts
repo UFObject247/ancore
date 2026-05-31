@@ -10,6 +10,8 @@ import { detectErrorKind, type HistoryError } from './errorTypes';
 type Options = {
   adapter: TransactionHistoryAdapter;
   pageSize?: number;
+  maxRetries?: number;
+  initialBackoffMs?: number;
 };
 
 type State = {
@@ -19,9 +21,12 @@ type State = {
   isLoadingMore: boolean;
   isRefreshing: boolean;
   error: HistoryError | null;
+  retryCount: number;
 };
 
 const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_INITIAL_BACKOFF_MS = 1000;
 
 const mergeUniqueTransactions = (
   incoming: Transaction[],
@@ -43,6 +48,8 @@ const mergeUniqueTransactions = (
 export const usePaginatedTransactionHistory = ({
   adapter,
   pageSize = DEFAULT_PAGE_SIZE,
+  maxRetries: _maxRetries = DEFAULT_MAX_RETRIES,
+  initialBackoffMs: _initialBackoffMs = DEFAULT_INITIAL_BACKOFF_MS,
 }: Options) => {
   const [state, setState] = useState<State>({
     items: [],
@@ -51,9 +58,11 @@ export const usePaginatedTransactionHistory = ({
     isLoadingMore: false,
     isRefreshing: false,
     error: null,
+    retryCount: 0,
   });
 
   const requestIdRef = useRef(0);
+  const backoffTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>();
 
   const fetchPage = useCallback(
     async ({
@@ -109,6 +118,7 @@ export const usePaginatedTransactionHistory = ({
             isLoadingMore: false,
             isRefreshing: false,
             error: historyError,
+            retryCount: 0,
           };
         });
       }
@@ -149,6 +159,16 @@ export const usePaginatedTransactionHistory = ({
 
     return fetchPage({ mode, cursor });
   }, [fetchPage, state.items.length, state.nextCursor]);
+
+  useEffect(() => {
+    const backoffTimeout = backoffTimeoutRef.current;
+
+    return () => {
+      if (backoffTimeout) {
+        clearTimeout(backoffTimeout);
+      }
+    };
+  }, []);
 
   return useMemo(
     () => ({

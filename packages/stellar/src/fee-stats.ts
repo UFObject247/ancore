@@ -119,22 +119,18 @@ function normalize(raw: HorizonFeeStats): FeeStats {
  */
 export async function fetchFeeStats(options: FeeStatsOptions): Promise<FeeStats> {
   const { horizonUrl, retryOptions = DEFAULT_RETRY, fallback = FALLBACK_FEE_STATS } = options;
-  const callerIsRetryable = retryOptions.isRetryable;
+
+  const defaultIsRetryable = (error: unknown): boolean => {
+    if (error instanceof NetworkError && error.statusCode !== undefined) {
+      return isRetryableStatus(error.statusCode);
+    }
+    return true;
+  };
 
   try {
     const raw = await withRetry(() => fetchRaw(horizonUrl), {
       ...retryOptions,
-      isRetryable: (error) => {
-        if (callerIsRetryable && !callerIsRetryable(error)) {
-          return false;
-        }
-
-        if (error instanceof NetworkError && error.statusCode !== undefined) {
-          return isRetryableStatus(error.statusCode);
-        }
-        // No status code → network-level failure, always retry
-        return true;
-      },
+      isRetryable: retryOptions.isRetryable ?? defaultIsRetryable,
     });
 
     return normalize(raw);

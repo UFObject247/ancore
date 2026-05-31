@@ -12,7 +12,10 @@ import {
   TransactionError,
   RetryExhaustedError,
 } from './errors';
-import { withRetry, type RetryOptions } from './retry';
+import { withRetry, resolveRetryOptions, type RetryOptions, type RetryPresetName } from './retry';
+
+/** Supported Stellar network identifiers for client factory creation. */
+export type NetworkId = Network;
 
 const NETWORK_CONFIG: Record<
   Network,
@@ -28,12 +31,33 @@ const NETWORK_CONFIG: Record<
     horizonUrl: 'https://horizon.stellar.org',
     networkPassphrase: 'Public Global Stellar Network ; September 2015',
   },
+  futurenet: {
+    rpcUrl: 'https://rpc-futurenet.stellar.org',
+    horizonUrl: 'https://horizon-futurenet.stellar.org',
+    networkPassphrase: 'Test SDF Future Network ; October 2022',
+  },
   local: {
     rpcUrl: 'http://localhost:8000/soroban/rpc',
     horizonUrl: 'http://localhost:8000',
     networkPassphrase: 'Standalone Network ; February 2017',
   },
 };
+
+/**
+ * Create a StellarClient configured for the given network.
+ *
+ * @throws {NetworkError} when the network is not supported
+ */
+export function createStellarClient(
+  network: NetworkId,
+  config?: Omit<StellarClientConfig, 'network'>
+): StellarClient {
+  if (!(network in NETWORK_CONFIG)) {
+    throw new NetworkError(`Unsupported network: ${network}`);
+  }
+
+  return new StellarClient({ network, ...config });
+}
 
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
 const DEFAULT_ASSET_METADATA_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -57,7 +81,9 @@ export interface AssetMetadataCacheMetrics {
 }
 
 export interface StellarClientConfig extends NetworkConfig {
-  /** Custom retry options for network requests */
+  /** Retry preset tuned for wallet (conservative) or indexer (aggressive) call sites */
+  retryPreset?: RetryPresetName;
+  /** Custom retry options merged over the selected preset */
   retryOptions?: RetryOptions;
   /** Time in milliseconds to cache resolved asset metadata. Set to 0 to disable caching. */
   assetMetadataCacheTtlMs?: number;
@@ -108,6 +134,10 @@ export class StellarClient {
   constructor(config: StellarClientConfig) {
     this.network = config.network;
 
+    if (!(config.network in NETWORK_CONFIG)) {
+      throw new NetworkError(`Unsupported network: ${config.network}`);
+    }
+
     const networkConfig = NETWORK_CONFIG[config.network];
     this.rpcUrls = this.resolveRpcUrls(config, networkConfig.rpcUrl);
     const horizonUrl = networkConfig.horizonUrl;
@@ -115,11 +145,7 @@ export class StellarClient {
 
     this.rpcServers = this.rpcUrls.map((rpcUrl) => new StellarRpc.Server(rpcUrl));
     this.horizonServer = new Horizon.Server(horizonUrl);
-    this.retryOptions = config.retryOptions ?? {
-      maxRetries: 3,
-      baseDelayMs: 1000,
-      exponential: true,
-    };
+    this.retryOptions = resolveRetryOptions(config.retryPreset ?? 'wallet', config.retryOptions);
     this.assetMetadataCacheTtlMs =
       config.assetMetadataCacheTtlMs ?? DEFAULT_ASSET_METADATA_CACHE_TTL_MS;
   }
@@ -187,18 +213,54 @@ export class StellarClient {
     return undefined;
   }
 
-  private isRetryableRpcError(error: Error): boolean {
-    if (error instanceof StellarError && !(error instanceof NetworkError)) {
-      return false;
+  private isRetryableStatusCode(statusCode: number): boolean {
+    return statusCode === 429 || statusCode >= 500;
+  }
+
+  private isRetryableNetworkError(error: Error): boolean {
+    if (error instanceof NetworkError && error.retryable !== undefined) {
+      return error.retryable;
     }
 
     const statusCode = this.getErrorStatusCode(error);
 
     if (statusCode !== undefined) {
-      return statusCode === 429 || statusCode >= 500;
+      return this.isRetryableStatusCode(statusCode);
     }
 
     return true;
+  }
+
+  private createHorizonNetworkError(message: string, error: unknown): NetworkError {
+    const statusCode = this.getErrorStatusCode(error);
+    const retryable = statusCode === undefined ? true : this.isRetryableStatusCode(statusCode);
+    const rateLimitMessage = statusCode === 429 ? `${message}: rate limited by Horizon` : message;
+
+    return new NetworkError(rateLimitMessage, {
+      cause: error instanceof Error ? error : undefined,
+      statusCode,
+      retryable,
+    });
+  }
+
+  private isRateLimitedNetworkError(error: Error): boolean {
+    return error instanceof NetworkError && error.statusCode === 429;
+  }
+
+  private isRetryableHorizonError(error: Error): boolean {
+    if (error instanceof StellarError && !(error instanceof NetworkError)) {
+      return false;
+    }
+
+    return this.isRetryableNetworkError(error);
+  }
+
+  private isRetryableRpcError(error: Error): boolean {
+    if (error instanceof StellarError && !(error instanceof NetworkError)) {
+      return false;
+    }
+
+    return this.isRetryableNetworkError(error);
   }
 
   private async executeRpcWithFailover<T>(
@@ -279,20 +341,20 @@ export class StellarClient {
             ) {
               throw new AccountNotFoundError(publicKey);
             }
-            throw new NetworkError('Failed to load account', {
-              cause: error instanceof Error ? error : undefined,
-              statusCode,
-            });
+            throw this.createHorizonNetworkError('Failed to load account', error);
           }
         },
         {
           ...this.retryOptions,
-          isRetryable: (error) => !(error instanceof AccountNotFoundError),
+          isRetryable: (error) => this.isRetryableHorizonError(error),
         }
       );
     } catch (error: unknown) {
       // If retry exhausted, throw the last error if it's one of our custom errors
       if (error instanceof RetryExhaustedError && error.lastError) {
+        if (this.isRateLimitedNetworkError(error.lastError)) {
+          throw error;
+        }
         if (
           error.lastError instanceof AccountNotFoundError ||
           (error.lastError instanceof NetworkError && error.lastError.statusCode !== 429)
@@ -330,26 +392,30 @@ export class StellarClient {
   ): Promise<AccountActivityPage<Horizon.HorizonApi.OperationResponseType>> {
     const { cursor = null, limit = 20, order = 'desc' } = request;
 
-    return withRetry(async () => {
-      try {
-        const builder = this.horizonServer
-          .operations()
-          .forAccount(publicKey)
-          .limit(limit)
-          .order(order);
+    return withRetry(
+      async () => {
+        try {
+          const builder = this.horizonServer
+            .operations()
+            .forAccount(publicKey)
+            .limit(limit)
+            .order(order);
 
-        const page = cursor ? await builder.cursor(cursor).call() : await builder.call();
-        // Cast via unknown to avoid overlap errors between Horizon response types
-        const records = page.records as unknown as Horizon.HorizonApi.OperationResponseType[];
-        const nextCursor = this.getNextCursor(records);
+          const page = cursor ? await builder.cursor(cursor).call() : await builder.call();
+          // Cast via unknown to avoid overlap errors between Horizon response types
+          const records = page.records as unknown as Horizon.HorizonApi.OperationResponseType[];
+          const nextCursor = this.getNextCursor(records);
 
-        return { records, nextCursor };
-      } catch (error) {
-        throw new NetworkError('Failed to fetch account activity page', {
-          cause: error instanceof Error ? error : undefined,
-        });
+          return { records, nextCursor };
+        } catch (error) {
+          throw this.createHorizonNetworkError('Failed to fetch account activity page', error);
+        }
+      },
+      {
+        ...this.retryOptions,
+        isRetryable: (error) => this.isRetryableHorizonError(error),
       }
-    }, this.retryOptions);
+    );
   }
 
   /**
@@ -483,14 +549,14 @@ export class StellarClient {
           if (transactionError) {
             throw transactionError;
           }
-          throw new NetworkError('Failed to submit transaction', {
-            cause: error instanceof Error ? error : undefined,
-            statusCode: this.getErrorStatusCode(error),
-          });
+          throw this.createHorizonNetworkError('Failed to submit transaction', error);
         }
       }, retryOptions);
     } catch (error: unknown) {
       if (error instanceof RetryExhaustedError && error.lastError) {
+        if (this.isRateLimitedNetworkError(error.lastError)) {
+          throw error;
+        }
         if (
           error.lastError instanceof TransactionError ||
           error.lastError instanceof NetworkError

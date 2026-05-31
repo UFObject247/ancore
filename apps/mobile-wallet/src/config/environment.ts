@@ -4,6 +4,8 @@ const DEFAULT_TESTNET_RPC_URL = 'https://soroban-testnet.stellar.org';
 const DEFAULT_TESTNET_PASSPHRASE = 'Test SDF Network ; September 2015';
 const DEFAULT_MAINNET_RPC_URL = 'https://soroban-rpc.mainnet.stellar.gateway.fm';
 const DEFAULT_MAINNET_PASSPHRASE = 'Public Global Stellar Network ; September 2015';
+const DEFAULT_FUTURENET_RPC_URL = 'https://rpc-futurenet.stellar.org';
+const DEFAULT_FUTURENET_PASSPHRASE = 'Test SDF Future Network ; October 2022';
 
 export interface MobileWalletEnvironment extends NetworkConfig {
   accountContractId: string;
@@ -22,7 +24,9 @@ export class MobileWalletEnvironmentError extends Error {
 }
 
 const isNetwork = (network: string): network is Network => {
-  return network === 'testnet' || network === 'mainnet' || network === 'local';
+  return (
+    network === 'testnet' || network === 'mainnet' || network === 'futurenet' || network === 'local'
+  );
 };
 
 const defaultRpcUrlFor = (network: Network): string | undefined => {
@@ -32,6 +36,10 @@ const defaultRpcUrlFor = (network: Network): string | undefined => {
 
   if (network === 'mainnet') {
     return DEFAULT_MAINNET_RPC_URL;
+  }
+
+  if (network === 'futurenet') {
+    return DEFAULT_FUTURENET_RPC_URL;
   }
 
   return undefined;
@@ -46,6 +54,10 @@ const defaultPassphraseFor = (network: Network): string | undefined => {
     return DEFAULT_MAINNET_PASSPHRASE;
   }
 
+  if (network === 'futurenet') {
+    return DEFAULT_FUTURENET_PASSPHRASE;
+  }
+
   return undefined;
 };
 
@@ -56,7 +68,7 @@ export const loadMobileWalletEnvironment = (
 
   if (!isNetwork(rawNetwork)) {
     throw new MobileWalletEnvironmentError(
-      `Unsupported ANCORE_MOBILE_NETWORK "${rawNetwork}". Expected testnet, mainnet, or local.`
+      `Unsupported ANCORE_MOBILE_NETWORK "${rawNetwork}". Expected testnet, mainnet, futurenet, or local.`
     );
   }
 

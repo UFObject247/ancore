@@ -48,6 +48,9 @@ export type { QRCodeProps } from './components/QRCode';
 export { Identicon } from './components/Identicon';
 export type { IdenticonProps } from './components/Identicon';
 
+export { MerchantBadge } from './components/MerchantBadge';
+export type { MerchantBadgeProps, MerchantBadgeStatus } from './components/MerchantBadge';
+
 // Form system
 export { Form, FormSubmit, FormError } from './components/Form/Form';
 export type { FormProps, FormSubmitProps, FormErrorProps } from './components/Form/Form';
@@ -86,7 +89,7 @@ export { Toast } from './components/Toast/Toast';
 export type { ToastProps } from './components/Toast/Toast';
 export { ToastContainer } from './components/Toast/ToastContainer';
 export { NotificationProvider } from './components/Toast/NotificationProvider';
-export type { ToastItem, ToastVariant } from './components/Toast/NotificationProvider';
+export type { Toast as ToastItem, ToastVariant } from './components/Toast/NotificationProvider';
 export { useToast } from './components/Toast/useToast';
 
 // Utility functions
