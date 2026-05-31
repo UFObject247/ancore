@@ -31,7 +31,8 @@
     "docs:validate-links": "node scripts/validate-doc-links.js",
     "verify": "pnpm lint && pnpm typecheck && pnpm test",
     "prepare": "husky",
-    "docs:check-structure": "node scripts/check-docs-repo-structure.mjs"
+    "docs:check-structure": "node scripts/check-docs-repo-structure.mjs",
+    "verify:theme-tokens": "node scripts/verify-theme-tokens.ts"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

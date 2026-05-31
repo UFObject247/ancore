@@ -16,12 +16,13 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "lint": "eslint src/",
+    "lint": "pnpm run verify:theme-tokens && eslint src/",
     "clean": "rm -rf dist",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify:theme-tokens": "pnpm --dir ../.. verify:theme-tokens"
   },
   "keywords": [
     "ancore",
