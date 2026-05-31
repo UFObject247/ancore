@@ -14,75 +14,91 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  packages:
+    name: Packages — Lint & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v2
         with:
           version: 9
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
 
-      - name: Run linter
-        run: pnpm lint
+      - name: Lint packages
+        run: pnpm turbo run lint --filter='./packages/*'
 
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Lint indexer migrations
-        run: pnpm indexer:lint-migrations
-
-      - name: Check documented repository structure
-        run: pnpm docs:check-structure
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build packages
-        run: pnpm build
-
-      - name: Run tests
-        run: pnpm turbo run test --concurrency=1
+      - name: Test packages
+        run: pnpm turbo run test --filter='./packages/*' --concurrency=1
 
       - name: Check coverage gates
         run: node scripts/coverage-gate.js
 
-  contracts:
-    name: Build & Test Contracts
+  apps:
+    name: Apps — Lint & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.81.0
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint apps
+        run: pnpm turbo run lint --filter='./apps/*'
+
+      - name: Test apps
+        run: pnpm turbo run test --filter='./apps/*' --concurrency=1
+
+  services:
+    name: Services — Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint services
+        run: pnpm turbo run lint --filter='@ancore/relayer' --filter='@ancore/ai-agent'
+
+      - name: Test services
+        run: pnpm turbo run test --filter='@ancore/relayer' --filter='@ancore/ai-agent' --concurrency=1
+
+      - name: Check documented repository structure
+        run: pnpm docs:check-structure
+
+  contracts:
+    name: Contracts — Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.81.0
 
       - name: Ensure Cargo cache directories exist
         run: |
@@ -92,8 +108,7 @@ jobs:
           mkdir -p $HOME/.cargo/git/db
           mkdir -p ${{ github.workspace }}/contracts/target
 
-      - name: Cache Cargo
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin
@@ -103,8 +118,7 @@ jobs:
             ${{ github.workspace }}/contracts/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/Cargo.lock') }}
 
-      - name: Add wasm32 target
-        run: rustup target add wasm32-unknown-unknown
+      - run: rustup target add wasm32-unknown-unknown
 
       - name: Install Stellar CLI
         run: |
@@ -129,22 +143,34 @@ jobs:
         working-directory: ./contracts
         run: cargo test
 
-      - name: Check WASM Size Regression
+      - name: Check WASM size regression
         run: node scripts/check-wasm-size.js
 
   indexer:
-    name: Indexer
+    name: Indexer — Build & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint indexer migrations
+        run: pnpm indexer:lint-migrations
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
-      - name: Cache Cargo
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin

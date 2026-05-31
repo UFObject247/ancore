@@ -180,6 +180,7 @@ describe('vault-export', () => {
         kind: 'privateKey',
         password: '',
         requirePassword: false,
+        storageManager: manager,
       })
     ).resolves.toBe(PRIVATE_KEY);
   });

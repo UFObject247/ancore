@@ -14,4 +14,5 @@ export function getSharedStorageManager(): StorageManagerInstance {
 
 export function resetSharedStorageManagerForTests(): void {
   _storageManager = null;
+  globalThis.localStorage?.clear?.();
 }
