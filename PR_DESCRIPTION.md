@@ -78,16 +78,16 @@ pnpm test src/__tests__/client.test.ts
 
 Expected: factory tests pass for testnet/mainnet/futurenet; invalid network throws.
 
-## Breaking Changes
-
-None.
+---
 
 ## Related Issues
 
-Closes ancore-org/ancore#654
-Closes ancore-org/ancore#670
-Closes ancore-org/ancore#678
-Closes ancore-org/ancore#681
+- Closes ancore-org/ancore#654
+- Closes ancore-org/ancore#670
+- Closes ancore-org/ancore#678
+- Closes ancore-org/ancore#681
+
+---
 
 ## Checklist
 

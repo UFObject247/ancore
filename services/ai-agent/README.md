@@ -50,6 +50,46 @@ No authentication required.
 }
 ```
 
+### `POST /v1/intents/validate`
+
+Validates agent-extracted intents.
+
+**Supported Intents:**
+
+1. **Payment Intent (`payment`):** Transfer funds. Requires `amount`, `asset` (`XLM` or `USDC`), and `destination`.
+2. **Invoice Intent (`invoice`):** Request invoice creation. Requires `amount`, `asset` (`XLM` or `USDC`), `recipient` (supports Unicode multilingual), and `dueDate` (valid parseable date).
+
+**Response `200` (Valid):**
+
+```json
+{
+  "valid": true,
+  "intent": {
+    "type": "invoice",
+    "amount": "150.00",
+    "asset": "USDC",
+    "recipient": "Alice",
+    "dueDate": "2026-12-31T23:59:59Z"
+  }
+}
+```
+
+**Response `422` (Invalid):**
+
+```json
+{
+  "issues": [
+    {
+      "code": "invalid_type",
+      "expected": "string",
+      "received": "undefined",
+      "path": ["dueDate"],
+      "message": "Required"
+    }
+  ]
+}
+```
+
 ---
 
 ## Running with Docker
@@ -99,6 +139,32 @@ pnpm --filter @ancore/ai-agent test
 
 # Start (development, requires ts-node)
 pnpm --filter @ancore/ai-agent dev
+```
+
+---
+
+## Logging
+
+All requests are logged as structured JSON objects to `stdout` by a request logger middleware.
+
+### Privacy and Redaction
+
+To prevent PII and prompt leaks, the logging system automatically redacts sensitive fields like `prompt` and `freeText` from all log output, even when `NODE_ENV` is not production. If you run the service with debug logging enabled, the full request bodies will still never expose user prompts.
+
+**Example log entry:**
+
+```json
+{
+  "level": "info",
+  "timestamp": "2026-05-31T14:00:00.000Z",
+  "message": "request_complete",
+  "route": "/agent/draft-intent",
+  "method": "POST",
+  "statusCode": 200,
+  "durationMs": 42,
+  "accountId": "123",
+  "intentType": "payment"
+}
 ```
 
 ---

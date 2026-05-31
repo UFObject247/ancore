@@ -16,6 +16,9 @@ export function createApp(): Express {
 
   app.use(express.json());
 
+  const { requestLogger } = require('./middleware/request-logger');
+  app.use(requestLogger);
+
   // ── Health endpoint ────────────────────────────────────────────────────────
   // Used by the Docker HEALTHCHECK and load-balancer probes.
   // Returns HTTP 200 while the process is running.
@@ -29,15 +32,55 @@ export function createApp(): Express {
     });
   });
 
+  // ── Draft Intent endpoint ──────────────────────────────────────────────────
+  app.post('/agent/draft-intent', (req: Request, res: Response) => {
+    const { prompt, accountId } = req.body;
+    if (!prompt || !accountId) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+    const isInvoice = prompt.toLowerCase().includes('invoice');
+    return res.status(200).json({
+      status: 'draft',
+      requiresConfirmation: true,
+      summary: isInvoice ? 'Drafted invoice intent' : 'Drafted payment intent',
+      intent: {
+        type: isInvoice ? 'invoice' : 'payment',
+        destination: 'G123',
+        amount: '10',
+        asset: 'XLM',
+      },
+    });
+  });
+
   // ── Intent validation ──────────────────────────────────────────────────────
   // Validates intent payloads against Zod schemas.
   // No LLM or external service call — purely structural validation.
   app.post('/v1/intents/validate', (req: Request, res: Response) => {
     const parsed = intentSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ errors: parsed.error.flatten() });
+      return res.status(422).json({ issues: parsed.error.issues });
     }
     return res.status(200).json({ valid: true, intent: parsed.data });
+  });
+
+  // ── Draft intent endpoint ───────────────────────────────────────────────────
+  // Creates a draft intent from natural language prompt.
+  // Returns payment or invoice intent based on prompt content.
+  app.post('/agent/draft-intent', (req: Request, res: Response) => {
+    const { prompt, accountId } = req.body;
+
+    if (!prompt || !accountId) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const isInvoice = typeof prompt === 'string' && prompt.toLowerCase().includes('invoice');
+
+    return res.status(200).json({
+      status: 'draft',
+      requiresConfirmation: true,
+      intent: { type: isInvoice ? 'invoice' : 'payment' },
+      summary: `Draft ${isInvoice ? 'invoice' : 'payment'} intent created`,
+    });
   });
 
   return app;

@@ -46,4 +46,29 @@ describe('Button', () => {
 
     await expectNoA11yViolations(container);
   });
+
+  it('renders loading spinner and sets aria-busy', () => {
+    render(<Button loading>Submit</Button>);
+    const button = screen.getByRole('button', { name: /submit/i });
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByTestId('button-spinner')).toBeInTheDocument();
+  });
+
+  it('prevents click events when loading', () => {
+    let clicked = false;
+    render(
+      <Button
+        loading
+        onClick={() => {
+          clicked = true;
+        }}
+      >
+        Submit
+      </Button>
+    );
+    const button = screen.getByRole('button', { name: /submit/i });
+    button.click();
+    expect(clicked).toBe(false);
+    expect(button).toBeDisabled();
+  });
 });
