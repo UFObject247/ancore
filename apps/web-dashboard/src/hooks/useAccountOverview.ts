@@ -8,11 +8,56 @@ export interface AccountOverview {
   status: AccountStatus;
 }
 
+export class AccountOverviewError extends Error {
+  code: 'ACCOUNT_NOT_FOUND' | 'HORIZON_UNAVAILABLE' | 'FETCH_FAILED';
+
+  constructor(
+    message: string,
+    code: 'ACCOUNT_NOT_FOUND' | 'HORIZON_UNAVAILABLE' | 'FETCH_FAILED',
+  ) {
+    super(message);
+    this.name = 'AccountOverviewError';
+    this.code = code;
+  }
+}
+
+export class AccountNotFoundError extends AccountOverviewError {
+  constructor() {
+    super('Account not found on network', 'ACCOUNT_NOT_FOUND');
+    this.name = 'AccountNotFoundError';
+  }
+}
+
+export class HorizonUnavailableError extends AccountOverviewError {
+  constructor() {
+    super('Horizon is temporarily unavailable', 'HORIZON_UNAVAILABLE');
+    this.name = 'HorizonUnavailableError';
+  }
+}
+
 export interface UseAccountOverviewReturn {
   data: AccountOverview | null;
   isLoading: boolean;
-  error: Error | null;
+  error: AccountOverviewError | null;
   refetch: () => Promise<void>;
+}
+
+const MOCK_ACCOUNT_OVERVIEW: AccountOverview = {
+  balance: 1250.75,
+  nonce: 42,
+  status: 'active',
+};
+
+function classifyAccountOverviewError(status?: number): AccountOverviewError {
+  if (status === 404) {
+    return new AccountNotFoundError();
+  }
+
+  if (status && status >= 500) {
+    return new HorizonUnavailableError();
+  }
+
+  return new AccountOverviewError('Failed to fetch account data', 'FETCH_FAILED');
 }
 
 /**
@@ -22,31 +67,39 @@ export interface UseAccountOverviewReturn {
 export function useAccountOverview(publicKey: string): UseAccountOverviewReturn {
   const [data, setData] = useState<AccountOverview | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<AccountOverviewError | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!publicKey) return;
+    if (!publicKey) {
+      setIsLoading(false);
+      setData(null);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const response = await fetch(`/api/account-overview?publicKey=${encodeURIComponent(publicKey)}`);
 
-      // Mock data - in a real app, this would be a multi-call or aggregate query
-      const mockData: AccountOverview = {
-        balance: 1250.75,
-        nonce: 42,
-        status: 'active',
-      };
+      if (!response.ok) {
+        throw classifyAccountOverviewError(response.status);
+      }
 
-      // Simulate partial/missing data edge cases if needed for testing
-      // (Though the hook itself should probably return consistent types)
+      const payload = (await response.json()) as Partial<AccountOverview>;
 
-      setData(mockData);
+      setData({
+        balance: payload.balance ?? MOCK_ACCOUNT_OVERVIEW.balance,
+        nonce: payload.nonce ?? MOCK_ACCOUNT_OVERVIEW.nonce,
+        status: payload.status ?? MOCK_ACCOUNT_OVERVIEW.status,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch account data'));
+      setData(null);
+      if (err instanceof AccountOverviewError) {
+        setError(err);
+      } else {
+        setError(new AccountOverviewError('Failed to fetch account data', 'FETCH_FAILED'));
+      }
     } finally {
       setIsLoading(false);
     }
