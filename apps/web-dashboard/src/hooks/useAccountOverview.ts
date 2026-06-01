@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { fetchAccountBalance, fetchAccountData } from '../lib/horizon';
 
 export type AccountStatus = 'active' | 'inactive' | 'locked';
 
@@ -17,7 +18,7 @@ export interface UseAccountOverviewReturn {
 
 /**
  * Hook to fetch account overview metrics (balance, nonce, status).
- * In production, this would use @ancore/core-sdk to query the Stellar network.
+ * Uses Horizon API to fetch real Stellar account data.
  */
 export function useAccountOverview(publicKey: string): UseAccountOverviewReturn {
   const [data, setData] = useState<AccountOverview | null>(null);
@@ -25,28 +26,27 @@ export function useAccountOverview(publicKey: string): UseAccountOverviewReturn 
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!publicKey) return;
+    if (!publicKey) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const accountData = await fetchAccountData(publicKey);
+      const balance = await fetchAccountBalance(publicKey);
 
-      // Mock data - in a real app, this would be a multi-call or aggregate query
-      const mockData: AccountOverview = {
-        balance: 1250.75,
-        nonce: 42,
+      setData({
+        balance,
+        nonce: Number(accountData.sequence),
         status: 'active',
-      };
-
-      // Simulate partial/missing data edge cases if needed for testing
-      // (Though the hook itself should probably return consistent types)
-
-      setData(mockData);
+      });
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch account data'));
+      setData(null);
     } finally {
       setIsLoading(false);
     }

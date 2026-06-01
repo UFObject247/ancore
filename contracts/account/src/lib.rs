@@ -407,6 +407,11 @@ impl AncoreAccount {
             return Err(ContractError::InvalidWasmHash);
         }
 
+        let current_wasm_hash = env.deployer().get_current_contract_wasm_hash();
+        if new_wasm_hash == current_wasm_hash {
+            return Err(ContractError::InvalidWasmHash);
+        }
+
         // Increment version number
         let current_version = Self::get_version(env.clone());
         env.storage()
@@ -1305,5 +1310,24 @@ mod test {
             "PERMISSION_EXECUTE value changed — update permission bit tables in \
              contracts/account/README.md and docs/contract-methods.md"
         );
+    }
+
+    #[test]
+    fn test_upgrade_rejects_same_wasm_hash() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AncoreAccount);
+        let client = AncoreAccountClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        init(&env, &client, &owner);
+        env.mock_all_auths();
+
+        let current_hash = env.deployer().get_current_contract_wasm_hash();
+
+        let result = client.try_upgrade(&current_hash);
+        assert!(matches!(
+            result,
+            Err(Ok(ContractError::InvalidWasmHash))
+        ));
     }
 }

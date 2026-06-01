@@ -130,6 +130,18 @@ Use `@ancore/account-abstraction` helpers (`permissionsToBitmask`, `bitmaskToCon
 
 See also: [`docs/contract-methods.md` — Session permissions](../../docs/contract-methods.md#session-permissions)
 
+### Upgrade
+
+```rust
+fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError>
+```
+
+Upgrade the contract to a new WASM hash. Only the owner can execute upgrades. The function rejects:
+- All-zero WASM hash: `[0u8; 32]`
+- Same hash as currently deployed: re-upgrade to identical hash is rejected with `InvalidWasmHash`
+
+This prevents no-op upgrades and ensures gas efficiency.
+
 ### Validation Module Boundary
 
 Pluggable validation modules are defined in `contracts/validation-modules/`.
@@ -160,6 +172,7 @@ The contract uses structured error codes to provide clear feedback for failure c
 | 7          | `InsufficientPermission` | Insufficient permissions               |
 | 8          | `InvalidVersion`         | Invalid version provided for migration |
 | 9          | `InvalidSignature`       | Invalid signature provided             |
+| 10         | `InvalidWasmHash`        | Invalid or duplicate WASM hash         |
 
 ### Error Handling Examples
 
