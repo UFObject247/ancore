@@ -4,6 +4,7 @@
 //! to enable proactive monitoring and alerting.
 
 use chrono::{DateTime, Utc};
+use metrics::{describe_gauge, gauge};
 use serde::Serialize;
 use sqlx::{PgPool, Row};
 
@@ -27,6 +28,23 @@ pub struct CursorMetrics {
 /// Threshold in seconds after which a cursor is considered stale.
 /// Default: 5 minutes (60 ledgers at 5s per ledger).
 pub const CURSOR_STALE_THRESHOLD_SECONDS: i64 = 300;
+
+/// Initialize Prometheus metrics descriptions.
+///
+/// Call this once at application startup to register metric metadata.
+pub fn init_prometheus_metrics() {
+    describe_gauge!("indexer_lag_blocks", "Number of ledgers behind chain head");
+    describe_gauge!("indexer_lag_seconds", "Estimated seconds behind chain head");
+}
+
+/// Record lag metrics for Prometheus export.
+///
+/// Updates the Prometheus gauges with current lag values.
+/// These metrics are exposed via the `/metrics` endpoint in Prometheus text format.
+pub fn record_lag(lag_blocks: i64, lag_seconds: i64) {
+    gauge!("indexer_lag_blocks").set(lag_blocks as f64);
+    gauge!("indexer_lag_seconds").set(lag_seconds as f64);
+}
 
 /// Fetch cursor staleness metrics for all ingestion streams.
 ///

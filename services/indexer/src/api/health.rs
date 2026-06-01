@@ -4,6 +4,7 @@ use serde::Serialize;
 use sqlx::{PgPool, Row};
 
 use crate::error::Result;
+use crate::metrics::record_lag;
 
 /// Health response body.
 ///
@@ -70,6 +71,9 @@ pub async fn health_handler(State(db): State<PgPool>) -> Result<Json<HealthRespo
     } else {
         "ok".to_string()
     };
+
+    // Update Prometheus metrics
+    record_lag(lag_blocks, lag_seconds);
 
     Ok(Json(HealthResponse {
         timestamp: Utc::now().to_rfc3339(),

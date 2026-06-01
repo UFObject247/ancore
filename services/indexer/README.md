@@ -18,6 +18,33 @@ sample payloads, and recommended indexer actions — see:
 
 ## API Endpoints
 
+### Prometheus Metrics
+
+```
+GET /metrics (Prometheus text format)
+```
+
+Exposes operational metrics in Prometheus text format for scraping. The metrics are served on a dedicated port (default: 9090, configurable via `PROMETHEUS_PORT` environment variable).
+
+**Available metrics:**
+- `indexer_lag_blocks`: Number of ledgers the indexer is behind the chain head
+- `indexer_lag_seconds`: Estimated seconds the indexer is behind the chain head (calculated as `lag_blocks × 5`)
+
+These metrics are automatically updated on each health check and can be used for alerting and monitoring dashboards.
+
+**Prometheus configuration:**
+
+Add the following scrape job to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: ancore-indexer
+    metrics_path: /metrics
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['indexer:9090']
+```
+
 ### List Account Activity
 
 ```
@@ -174,17 +201,38 @@ bash scripts/curl-smoke-indexer.sh
 ### Health check
 
 ```bash
-curl -s localhost:8080/health | jq
+curl -s localhost:3000/health | jq
 ```
 
-Sample response (`fixtures/api/health-response.json`):
+Sample response:
 
 ```json
 {
+  "timestamp": "2024-01-15T10:30:00Z",
   "status": "ok",
-  "version": "0.1.0",
-  "uptime_seconds": 3600
+  "latest_indexed_ledger": 50123456,
+  "chain_head": 50123456,
+  "lag_blocks": 0,
+  "lag_seconds": 0
 }
+```
+
+### Prometheus metrics
+
+```bash
+curl -s localhost:9090/metrics
+```
+
+Sample response (Prometheus text format):
+
+```
+# HELP indexer_lag_blocks Number of ledgers behind chain head
+# TYPE indexer_lag_blocks gauge
+indexer_lag_blocks 0
+
+# HELP indexer_lag_seconds Estimated seconds behind chain head
+# TYPE indexer_lag_seconds gauge
+indexer_lag_seconds 0
 ```
 
 ### List account activity
@@ -192,7 +240,7 @@ Sample response (`fixtures/api/health-response.json`):
 ```bash
 ACCOUNT="GABC123XYZ456DEF789GHI012JKL345MNO678PQR901STU234VWX567YZA"
 
-curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?limit=5" | jq
+curl -s "localhost:3000/api/v1/accounts/$ACCOUNT/activity?limit=5" | jq
 ```
 
 Sample response (`fixtures/api/account-activity-response.json`):
@@ -226,7 +274,7 @@ Sample response (`fixtures/api/account-activity-response.json`):
 ### Filter by activity type
 
 ```bash
-curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?activity_type=payment&limit=5" | jq
+curl -s "localhost:3000/api/v1/accounts/$ACCOUNT/activity?activity_type=payment&limit=5" | jq
 ```
 
 ### Cursor pagination
@@ -234,13 +282,13 @@ curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?activity_type=payment&
 Use the `next_cursor` value from a previous response:
 
 ```bash
-curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?cursor_after=eyJ0IjoiMjAyNC...&limit=5" | jq
+curl -s "localhost:3000/api/v1/accounts/$ACCOUNT/activity?cursor_after=eyJ0IjoiMjAyNC...&limit=5" | jq
 ```
 
 ### Filter by ledger range
 
 ```bash
-curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?ledger_min=50000000&ledger_max=50200000" | jq
+curl -s "localhost:3000/api/v1/accounts/$ACCOUNT/activity?ledger_min=50000000&ledger_max=50200000" | jq
 ```
 
 ### Error envelope
@@ -248,7 +296,7 @@ curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?ledger_min=50000000&le
 Invalid parameters return a structured error. Example — `limit` exceeds maximum:
 
 ```bash
-curl -s "localhost:8080/api/v1/accounts/$ACCOUNT/activity?limit=500" | jq
+curl -s "localhost:3000/api/v1/accounts/$ACCOUNT/activity?limit=500" | jq
 ```
 
 Sample error response (`fixtures/api/error-response.json`):
@@ -294,6 +342,7 @@ docker-compose logs indexer
 DATABASE_URL=postgresql://user:password@localhost:5432/ancore
 TEST_DATABASE_URL=postgresql://user:password@localhost:5432/ancore_test
 DB_QUERY_TIMEOUT_SEC=30 # Optional, defaults to 30
+PROMETHEUS_PORT=9090 # Optional, defaults to 9090
 # SQLX_OFFLINE is set automatically via .cargo/config.toml — no manual export needed
 ```
 
