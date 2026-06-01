@@ -136,6 +136,25 @@ pnpm contracts:build
 pnpm contracts:test
 ```
 
+### Local Services Stack
+
+Run the full service stack (postgres, indexer, relayer) locally with Docker Compose:
+
+```bash
+# Start all services
+docker compose -f docker-compose.dev.yml up
+
+# Run indexer migrations
+docker compose -f docker-compose.dev.yml exec indexer \
+  psql $DATABASE_URL -f migrations/001_create_account_activity_table.sql
+
+# Verify services
+curl http://localhost:3000/health  # Indexer
+curl http://localhost:3001/relay/status  # Relayer
+```
+
+See [Local Services Guide](docs/development/local-services.md) for detailed instructions.
+
 ### Development Shortcuts
 
 Common per-package dev & test shortcuts (root `package.json` scripts):
