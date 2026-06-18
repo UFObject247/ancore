@@ -79,6 +79,7 @@ The following components undergo rigorous security review:
 ### Medium-Security Components
 
 #### Core SDK
+
 - **Path**: `packages/core-sdk/`
 - **Responsibility**: Stellar network operations, account nonce tracking, signature coordination
 - **Assets Handled**: User session context (not private keys), transaction payloads, nonce state
@@ -87,6 +88,7 @@ The following components undergo rigorous security review:
 - **Link**: See [THREAT_MODEL.md](docs/security/THREAT_MODEL.md) § SDK
 
 #### Relayer Service
+
 - **Path**: `services/relayer/`
 - **Responsibility**: Transaction relay, signature verification, idempotency, scheduled transfers
 - **Assets Handled**: No mnemonics; stores bearer tokens and scheduled transfer metadata
@@ -105,6 +107,7 @@ The following components undergo rigorous security review:
 ### Medium-Security Services
 
 #### Indexer Service
+
 - **Path**: `services/indexer/` (GraphQL + REST API)
 - **Responsibility**: Reads blockchain data, exposes account state and transfer history
 - **Assets Handled**: Public blockchain data, historical transaction details
@@ -113,6 +116,7 @@ The following components undergo rigorous security review:
 - **Link**: See [THREAT_MODEL.md](docs/security/THREAT_MODEL.md) § Indexer
 
 #### AI Agent Service
+
 - **Path**: `services/ai-agent/`
 - **Responsibility**: Intent interpretation and workflow validation
 - **Assets Handled**: Transaction intents, user preferences, temporary context
@@ -123,6 +127,7 @@ The following components undergo rigorous security review:
 ### Lower-Risk Components
 
 #### Applications (UIs)
+
 - **Path**: `apps/extension-wallet/`, `apps/web-dashboard/`, `apps/mobile-wallet/`
 - **Responsibility**: User interaction, transaction signing, key management UI
 - **Assets Handled**: Private keys (extension only), session state, UI preferences
@@ -131,6 +136,7 @@ The following components undergo rigorous security review:
 - **Link**: See [docs/security/extension-wallet.md](docs/security/extension-wallet.md)
 
 #### SDK & Utilities
+
 - **Path**: `packages/ui-kit/`, `packages/types/`, `docs/**`
 - **Responsibility**: Reusable components, type definitions, documentation
 - **Requirements**:
@@ -298,6 +304,7 @@ High-security code must pass:
 ### Good Report
 
 ```
+
 Subject: Authorization Bypass in Session Key Validation
 
 Description:
@@ -305,6 +312,7 @@ The validateSessionKey function does not properly check expiration times,
 allowing expired session keys to be used.
 
 Steps to Reproduce:
+
 1. Create session key with 1-hour expiration
 2. Wait 2 hours
 3. Use expired key to sign transaction
@@ -316,12 +324,15 @@ Expired session keys can be used indefinitely, violating intended security model
 Suggested Fix:
 Add explicit timestamp check before signature validation in
 packages/account-abstraction/src/session.ts:145
+
 ```
 
 ### Bad Report
 
 ```
+
 Your code is insecure
+
 ```
 
 ## Security Updates
@@ -345,3 +356,4 @@ We thank the following security researchers:
 ---
 
 **Last Updated**: April 2026
+```

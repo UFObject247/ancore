@@ -21,6 +21,7 @@ import {
 } from '@/services/scheduler-client';
 import { resolveHandle as defaultResolveHandle } from '@/services/handle-resolver';
 import type { SimulationState } from '@/screens/Send/SimulationPreview';
+import { computeMaxSendable, BASE_SEND_RESERVE, DEFAULT_SEND_FEE } from '@/utils/amount';
 
 export type SendStep = 'form' | 'review' | 'confirm' | 'status' | 'scheduled';
 export type TxStatus = 'idle' | 'pending' | 'confirmed' | 'failed';
@@ -90,6 +91,12 @@ export interface ValidationErrors {
   password?: string;
   simulation?: string;
   policy?: string;
+}
+
+export interface SetMaxAmountOptions {
+  to?: string;
+  asset?: string;
+  note?: string;
 }
 
 const DEFAULT_BALANCE = 250;
@@ -435,9 +442,35 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
     [accountAddress, pollIntervalMs, schedule, schedulerClient, service, timing, tx]
   );
 
-  const setMaxAmount = useCallback(() => {
-    setErrors((current) => ({ ...current, amount: undefined }));
-  }, []);
+  const setMaxAmount = useCallback(
+    async (options?: SetMaxAmountOptions) => {
+      const recipient = options?.to?.trim() || accountAddress;
+      let feeAmount = DEFAULT_SEND_FEE;
+
+      try {
+        const estimate = await service.estimateFee({
+          to: recipient,
+          amount: '0',
+          note: options?.note ?? '',
+        });
+        feeAmount = Number(estimate.totalFee) || feeAmount;
+      } catch {
+        // Falling back to a safe fee estimate if the service cannot calculate it.
+      }
+
+      const max = computeMaxSendable({
+        balance,
+        fee: feeAmount,
+        reserve: options?.asset === 'XLM' || options?.asset === undefined ? BASE_SEND_RESERVE : 0,
+        asset: options?.asset ?? 'XLM',
+        assetDecimals,
+      });
+
+      setErrors((current) => ({ ...current, amount: undefined }));
+      return max;
+    },
+    [service, balance, assetDecimals, accountAddress]
+  );
 
   return {
     balance,

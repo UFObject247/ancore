@@ -5,6 +5,19 @@ import { requestLogger } from './middleware/request-logger';
 const startTime = Date.now();
 
 /**
+ * Determines if a payment intent requires confirmation based on amount.
+ * High-value payments (e.g., >100 USDC or >1000 XLM) require confirmation.
+ */
+function requiresConfirmation(intent: any): boolean {
+  if (intent.type === 'payment') {
+    const amount = parseFloat(intent.amount);
+    const threshold = intent.asset === 'USDC' ? 100 : 1000;
+    return amount > threshold;
+  }
+  return false;
+}
+
+/**
  * App factory — exported for testing.
  *
  * Creates and configures the Express application for the AI Agent service.

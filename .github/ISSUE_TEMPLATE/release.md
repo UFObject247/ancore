@@ -21,7 +21,7 @@ assignees: ''
 
 ## 2. Release Gate Checklist
 
-> Refer to [docs/release/checklist.md](file:///c:/Users/ADMIN/Desktop/lekan-drips/ancore/docs/release/checklist.md) for detailed requirements.
+> Refer to [docs/release/checklist.md](../../docs/release/checklist.md) for detailed requirements.
 
 ### Code & Tests
 

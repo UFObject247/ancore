@@ -35,6 +35,7 @@ import { SendScreen as SendFlowScreen } from '../screens/Send/SendScreen';
 import { ScheduledTransfersScreen } from '../screens/ScheduledTransfers/ScheduledTransfersScreen';
 import { useDashboardSettingsStore } from '../state/dashboard-settings';
 import { EmptyTransactions } from '../components/EmptyTransactions';
+import { ErrorBoundary } from '../components/ErrorBoundary/ErrorBoundary';
 
 const APP_TITLE = 'Ancore Extension';
 
@@ -194,6 +195,7 @@ function SecondaryLink({ to, children }: { to: string; children: React.ReactNode
 }
 
 function WelcomeScreen() {
+  // DEMO ONBOARDING: sets hasOnboarded without vault keygen. See FREIGHTER_COMPARISON §4 P0.
   return (
     <PageScaffold
       eyebrow="Extension setup"
@@ -638,48 +640,55 @@ function NotFoundScreen() {
 }
 
 export function ExtensionRouterContent() {
+  const navigate = useNavigate();
+
   return (
     <PopupFrame>
       <TitleSync />
-      <Routes>
-        <Route element={<RootRedirect />} path="/" />
-        <Route
-          element={
-            <PublicOnlyGuard mode="welcome">
-              <WelcomeScreen />
-            </PublicOnlyGuard>
-          }
-          path="/welcome"
-        />
-        <Route
-          element={
-            <PublicOnlyGuard mode="create-account">
-              <CreateAccountScreen />
-            </PublicOnlyGuard>
-          }
-          path="/create-account"
-        />
-        <Route
-          element={
-            <PublicOnlyGuard mode="unlock">
-              <UnlockScreen />
-            </PublicOnlyGuard>
-          }
-          path="/unlock"
-        />
-        <Route element={<AuthGuard />}>
-          <Route element={<ProtectedLayout />}>
-            <Route element={<HomeScreen />} path="/home" />
-            <Route element={<SendScreenRoute />} path="/send" />
-            <Route element={<ScheduledTransfersRoute />} path="/scheduled" />
-            <Route element={<ReceiveScreen />} path="/receive" />
-            <Route element={<HistoryScreen />} path="/history" />
-            <Route element={<SettingsScreen />} path="/settings" />
-            <Route element={<SessionKeysScreen />} path="/session-keys" />
+      <ErrorBoundary
+        onGoHome={() => navigate('/home', { replace: true })}
+        onGoToSettings={() => navigate('/settings', { replace: true })}
+      >
+        <Routes>
+          <Route element={<RootRedirect />} path="/" />
+          <Route
+            element={
+              <PublicOnlyGuard mode="welcome">
+                <WelcomeScreen />
+              </PublicOnlyGuard>
+            }
+            path="/welcome"
+          />
+          <Route
+            element={
+              <PublicOnlyGuard mode="create-account">
+                <CreateAccountScreen />
+              </PublicOnlyGuard>
+            }
+            path="/create-account"
+          />
+          <Route
+            element={
+              <PublicOnlyGuard mode="unlock">
+                <UnlockScreen />
+              </PublicOnlyGuard>
+            }
+            path="/unlock"
+          />
+          <Route element={<AuthGuard />}>
+            <Route element={<ProtectedLayout />}>
+              <Route element={<HomeScreen />} path="/home" />
+              <Route element={<SendScreenRoute />} path="/send" />
+              <Route element={<ScheduledTransfersRoute />} path="/scheduled" />
+              <Route element={<ReceiveScreen />} path="/receive" />
+              <Route element={<HistoryScreen />} path="/history" />
+              <Route element={<SettingsScreen />} path="/settings" />
+              <Route element={<SessionKeysScreen />} path="/session-keys" />
+            </Route>
           </Route>
-        </Route>
-        <Route element={<NotFoundScreen />} path="*" />
-      </Routes>
+          <Route element={<NotFoundScreen />} path="*" />
+        </Routes>
+      </ErrorBoundary>
     </PopupFrame>
   );
 }

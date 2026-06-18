@@ -93,7 +93,7 @@ export function createApp(
       methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type'],
       credentials: true,
-    }),
+    })
   );
 
   // Payload guard: reject oversized requests before body parsing to prevent

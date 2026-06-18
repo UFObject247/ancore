@@ -1,7 +1,6 @@
-import { webcrypto } from 'node:crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { encryptSecretKey } from '@ancore/crypto';
-import { SecureStorageManager, createStorageAdapter, type StorageAdapter } from '@ancore/core-sdk';
+import { SecureStorageManager, type StorageAdapter } from '@ancore/core-sdk';
 
 import {
   VaultExportError,
@@ -10,36 +9,6 @@ import {
   verifyVaultPassword,
 } from '../vault-export';
 import { getSharedStorageManager } from '../storage-manager';
-
-vi.mock('@ancore/core-sdk', async () => {
-  const actual = await vi.importActual<typeof import('@ancore/core-sdk')>('@ancore/core-sdk');
-  let adapter: StorageAdapter | null = null;
-
-  return {
-    ...actual,
-    createStorageAdapter: () => {
-      if (!adapter) {
-        adapter = new MockStorageAdapter();
-      }
-      return adapter;
-    },
-  };
-});
-
-if (!globalThis.crypto?.subtle) {
-  Object.defineProperty(globalThis, 'crypto', {
-    value: webcrypto,
-    configurable: true,
-  });
-}
-
-if (!globalThis.btoa) {
-  globalThis.btoa = (value: string) => Buffer.from(value, 'binary').toString('base64');
-}
-
-if (!globalThis.atob) {
-  globalThis.atob = (value: string) => Buffer.from(value, 'base64').toString('binary');
-}
 
 class MockStorageAdapter implements StorageAdapter {
   private store = new Map<string, unknown>();
@@ -54,6 +23,10 @@ class MockStorageAdapter implements StorageAdapter {
 
   async remove(key: string): Promise<void> {
     this.store.delete(key);
+  }
+
+  clearStore(): void {
+    this.store.clear();
   }
 }
 
@@ -71,7 +44,10 @@ async function seedVaultAccount(
   }
 ): Promise<SecureStorageManager> {
   const manager = new SecureStorageManager(storage);
-  await manager.unlock(PASSWORD);
+  const unlocked = await manager.unlock(PASSWORD);
+  if (!unlocked) {
+    throw new Error('seedVaultAccount: unlock failed unexpectedly');
+  }
   await manager.saveAccount(account);
   manager.lock();
   return manager;
@@ -81,16 +57,20 @@ describe('vault-export', () => {
   let storage: MockStorageAdapter;
 
   beforeEach(() => {
-    localStorage.clear();
-    storage = createStorageAdapter() as MockStorageAdapter;
+    globalThis.localStorage?.clear?.();
+    storage = new MockStorageAdapter();
+    resetVaultStorageManagerForTests(storage);
+  });
+
+  afterEach(() => {
     resetVaultStorageManagerForTests();
   });
 
   it('verifies the wallet password against secure storage', async () => {
     await seedVaultAccount(storage, { privateKey: PRIVATE_KEY });
 
-    await expect(verifyVaultPassword(PASSWORD)).resolves.toBe(true);
-    await expect(verifyVaultPassword('wrong-password')).resolves.toBe(false);
+    await expect(verifyVaultPassword(PASSWORD, { storage })).resolves.toBe(true);
+    await expect(verifyVaultPassword('wrong-password', { storage })).resolves.toBe(false);
   });
 
   it('reveals a private key after password verification', async () => {
@@ -178,9 +158,7 @@ describe('vault-export', () => {
   });
 
   it('uses the shared unlocked storage manager when password checks are disabled', async () => {
-    localStorage.clear();
-    resetVaultStorageManagerForTests();
-
+    resetVaultStorageManagerForTests(storage);
     const manager = getSharedStorageManager();
     await manager.unlock(PASSWORD);
     await manager.saveAccount({

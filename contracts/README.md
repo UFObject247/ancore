@@ -23,11 +23,11 @@ a script or CLI command in this directory.
 
 ### Prerequisites
 
-| Tool | Minimum version | Install |
-|------|----------------|---------|
-| `stellar` CLI | 22.0.1 | `cargo install --locked stellar-cli` |
-| `rustup` target `wasm32-unknown-unknown` | any | `rustup target add wasm32-unknown-unknown` |
-| A funded testnet account | — | [Stellar Lab Friendbot](https://laboratory.stellar.org/#account-creator?network=test) |
+| Tool                                     | Minimum version | Install                                                                               |
+| ---------------------------------------- | --------------- | ------------------------------------------------------------------------------------- |
+| `stellar` CLI                            | 22.0.1          | `cargo install --locked stellar-cli`                                                  |
+| `rustup` target `wasm32-unknown-unknown` | any             | `rustup target add wasm32-unknown-unknown`                                            |
+| A funded testnet account                 | —               | [Stellar Lab Friendbot](https://laboratory.stellar.org/#account-creator?network=test) |
 
 ### Step 1 — Fund a testnet identity
 
@@ -125,14 +125,14 @@ bash scripts/verify-deploy-docs.sh
 
 ### Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| `DEPLOYER_SECRET not set` | Environment variable missing | `export DEPLOYER_SECRET=$(stellar keys show deployer --secret)` |
-| `Contract deployment failed` | CLI output format changed | Upgrade `stellar-cli` to ≥ 22.0.1 |
-| `insufficient balance` | Account not funded | Re-run `stellar keys fund deployer --network testnet` |
-| `invalid wasm hash` | All-zero hash in `upgrade()` | Ensure `--wasm` points to a built artifact, not a placeholder |
-| WASM too large (> 128 KiB) | Contract grew past Soroban limit | Run `stellar contract optimize` before deploying |
-| `AlreadyInitialized` on `initialize` | Contract deployed but init called twice | Deploy a fresh instance or use a new identity |
+| Symptom                              | Likely cause                            | Fix                                                             |
+| ------------------------------------ | --------------------------------------- | --------------------------------------------------------------- |
+| `DEPLOYER_SECRET not set`            | Environment variable missing            | `export DEPLOYER_SECRET=$(stellar keys show deployer --secret)` |
+| `Contract deployment failed`         | CLI output format changed               | Upgrade `stellar-cli` to ≥ 22.0.1                               |
+| `insufficient balance`               | Account not funded                      | Re-run `stellar keys fund deployer --network testnet`           |
+| `invalid wasm hash`                  | All-zero hash in `upgrade()`            | Ensure `--wasm` points to a built artifact, not a placeholder   |
+| WASM too large (> 128 KiB)           | Contract grew past Soroban limit        | Run `stellar contract optimize` before deploying                |
+| `AlreadyInitialized` on `initialize` | Contract deployed but init called twice | Deploy a fresh instance or use a new identity                   |
 
 ---
 

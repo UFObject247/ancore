@@ -1,5 +1,10 @@
 import { decryptSecretKey, type EncryptedSecretKeyPayload } from '@ancore/crypto';
-import { SecureStorageManager, createStorageAdapter, type AccountData } from '@ancore/core-sdk';
+import {
+  SecureStorageManager,
+  createStorageAdapter,
+  type AccountData,
+  type StorageAdapter,
+} from '@ancore/core-sdk';
 import { getSharedStorageManager, resetSharedStorageManagerForTests } from './storage-manager';
 
 export type VaultExportKind = 'privateKey' | 'mnemonic';
@@ -22,16 +27,19 @@ export function getVaultStorageManager(): StorageManagerInstance {
   return getSharedStorageManager();
 }
 
-export function resetVaultStorageManagerForTests(): void {
-  resetSharedStorageManagerForTests();
+export function resetVaultStorageManagerForTests(adapter?: StorageAdapter): void {
+  resetSharedStorageManagerForTests(adapter);
 }
 
 export function zeroizeBuffer(buffer: Uint8Array): void {
   buffer.fill(0);
 }
 
-export async function verifyVaultPassword(password: string): Promise<boolean> {
-  const verifier = new SecureStorageManager(createStorageAdapter());
+export async function verifyVaultPassword(
+  password: string,
+  options?: { storage?: StorageAdapter }
+): Promise<boolean> {
+  const verifier = new SecureStorageManager(options?.storage ?? createStorageAdapter());
   const unlocked = await verifier.unlock(password);
   verifier.lock();
   return unlocked;

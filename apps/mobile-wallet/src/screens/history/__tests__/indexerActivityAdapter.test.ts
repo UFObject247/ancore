@@ -35,7 +35,8 @@ describe('createIndexerActivityAdapter', () => {
       pagination: {
         has_next_page: true,
         has_previous_page: false,
-        next_cursor: 'eyJ0IjoiMjAyNC0wMS0xNVQxMDozMDowMFoiLCJpIjoiMDE4ZTFmMmEtM2I0Yy03ZDhlLTlmMGEtMWIyYzNkNGU1ZjZhIn0',
+        next_cursor:
+          'eyJ0IjoiMjAyNC0wMS0xNVQxMDozMDowMFoiLCJpIjoiMDE4ZTFmMmEtM2I0Yy03ZDhlLTlmMGEtMWIyYzNkNGU1ZjZhIn0',
         prev_cursor: null,
         count: 1,
       },
@@ -74,7 +75,8 @@ describe('createIndexerActivityAdapter', () => {
   });
 
   it('should fetch subsequent page with cursor', async () => {
-    const cursor = 'eyJ0IjoiMjAyNC0wMS0xNVQxMDozMDowMFoiLCJpIjoiMDE4ZTFmMmEtM2I0Yy03ZDhlLTlmMGEtMWIyYzNkNGU1ZjZhIn0';
+    const cursor =
+      'eyJ0IjoiMjAyNC0wMS0xNVQxMDozMDowMFoiLCJpIjoiMDE4ZTFmMmEtM2I0Yy03ZDhlLTlmMGEtMWIyYzNkNGU1ZjZhIn0';
     const mockResponse = {
       data: [
         {
@@ -216,9 +218,9 @@ describe('createIndexerActivityAdapter', () => {
 
     const adapter = createIndexerActivityAdapter(baseUrl, accountId);
 
-    await expect(
-      adapter.fetchTransactionPage({ cursor: null, pageSize: 20 })
-    ).rejects.toThrow('Indexer API error: 500 Internal Server Error - Database connection failed');
+    await expect(adapter.fetchTransactionPage({ cursor: null, pageSize: 20 })).rejects.toThrow(
+      'Indexer API error: 500 Internal Server Error - Database connection failed'
+    );
   });
 
   it('should throw error on network failure', async () => {
@@ -226,9 +228,9 @@ describe('createIndexerActivityAdapter', () => {
 
     const adapter = createIndexerActivityAdapter(baseUrl, accountId);
 
-    await expect(
-      adapter.fetchTransactionPage({ cursor: null, pageSize: 20 })
-    ).rejects.toThrow('Network error');
+    await expect(adapter.fetchTransactionPage({ cursor: null, pageSize: 20 })).rejects.toThrow(
+      'Network error'
+    );
   });
 
   it('should pass abort signal to fetch', async () => {

@@ -115,9 +115,9 @@ required `u32` value to be authorized.
 
 **Defined constants** (source: `src/lib.rs`):
 
-| Value | Constant | Description |
-|-------|----------|-------------|
-| `1` | `PERMISSION_EXECUTE` | Required to call `execute()`. A session key whose `permissions` vec does not contain `1` will be rejected with `InsufficientPermission` (error code 7). |
+| Value | Constant             | Description                                                                                                                                             |
+| ----- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1`   | `PERMISSION_EXECUTE` | Required to call `execute()`. A session key whose `permissions` vec does not contain `1` will be rejected with `InsufficientPermission` (error code 7). |
 
 > **Reserved values:** `0` and values ≥ `2` are reserved for future expansion
 > and have no effect in the current contract.
@@ -137,6 +137,7 @@ fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError>
 ```
 
 Upgrade the contract to a new WASM hash. Only the owner can execute upgrades. The function rejects:
+
 - All-zero WASM hash: `[0u8; 32]`
 - Same hash as currently deployed: re-upgrade to identical hash is rejected with `InvalidWasmHash`
 

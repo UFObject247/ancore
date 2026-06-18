@@ -18,7 +18,7 @@ interface EmptyConfig {
 function getConfig(
   variant: TransactionHistoryFilter,
   onReceive: () => void,
-  onResetFilter: () => void,
+  onResetFilter: () => void
 ): EmptyConfig {
   switch (variant) {
     case 'sent':

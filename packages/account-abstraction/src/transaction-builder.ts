@@ -1,15 +1,13 @@
 import {
+  Account,
   Contract,
   nativeToScVal,
   Transaction,
   TransactionBuilder as StellarTransactionBuilder,
   xdr,
-  SorobanData,
-  Operation,
-  Address as StellarAddress,
-  ScInt,
 } from '@stellar/stellar-sdk';
-import { NotImplementedError } from './errors';
+
+type SorobanData = xdr.SorobanTransactionData;
 
 export type TransactionBuilderOptions = {
   fee?: string;
@@ -51,7 +49,6 @@ export class TransactionBuilder {
   private readonly timeoutSeconds: number;
   private sorobanData?: SorobanData;
   private simulatedFee?: string;
-  private simulatedResourceFee?: string;
 
   constructor(source: string, accountContractId: string, options: TransactionBuilderOptions = {}) {
     if (!source || typeof source !== 'string') {
@@ -143,19 +140,12 @@ export class TransactionBuilder {
    * For MVP, returns estimated values based on operation count.
    */
   async simulate(): Promise<SimulationResult> {
-    // In production, this would call:
-    // const server = new Server(rpcUrl);
-    // const result = await server.simulateTransaction(tx);
-    
     const operationCount = this.ops.length;
-    const baseFee = parseInt(this.fee);
+    const baseFee = parseInt(this.fee, 10);
     const estimatedFee = (baseFee * operationCount).toString();
-    
-    // Estimate resource fee (100 stroops per operation as a heuristic)
     const resourceFee = (operationCount * 100).toString();
-    
+
     this.simulatedFee = estimatedFee;
-    this.simulatedResourceFee = resourceFee;
 
     return {
       fee: estimatedFee,
@@ -174,21 +164,18 @@ export class TransactionBuilder {
       throw new Error('Must call simulate() before build() to get accurate fee estimates');
     }
 
-    const stellarBuilder = new StellarTransactionBuilder({
+    const account = new Account(this.source, '0');
+    const stellarBuilder = new StellarTransactionBuilder(account, {
       fee: this.simulatedFee,
       networkPassphrase: this.networkPassphrase,
     });
 
-    // Add all operations
     this.ops.forEach((op) => {
       stellarBuilder.addOperation(this.buildOperation(op));
     });
 
-    // Set timeout and source
     stellarBuilder.setTimeout(this.timeoutSeconds);
-    stellarBuilder.setSourceAccount(this.source);
 
-    // Set Soroban data if available
     if (this.sorobanData) {
       stellarBuilder.setSorobanData(this.sorobanData);
     }
@@ -200,7 +187,7 @@ export class TransactionBuilder {
     if (op.type === 'contractExecute') {
       const contract = new Contract(op.contractId);
       const args = op.args.map((value) => nativeToScVal(value));
-      return contract.call(op.method, ...args).toXDR('base64');
+      return contract.call(op.method, ...args);
     }
 
     if (op.type === 'custom') {
@@ -212,12 +199,12 @@ export class TransactionBuilder {
       return contract.call(
         'add_session_key',
         nativeToScVal(op.sessionKey),
-        nativeToScVal(new ScInt(op.expiresAt)),
+        nativeToScVal(op.expiresAt, { type: 'u64' }),
         nativeToScVal(op.permissions)
-      ).toXDR('base64');
+      );
     }
 
-    return contract.call('revoke_session_key', nativeToScVal(op.sessionKey)).toXDR('base64');
+    return contract.call('revoke_session_key', nativeToScVal(op.sessionKey));
   }
 
   private assertSessionKeyParams(

@@ -42,22 +42,21 @@ declare const chrome: {
     onStartup: {
       addListener(callback: () => void): void;
     };
-  };
-  storage: {
-    local: {
-      get(key: string, callback: (result: Record<string, unknown>) => void): void;
-      set(items: Record<string, unknown>, callback?: () => void): void;
-    };
-    session: {
-      get(key: string, callback: (result: Record<string, unknown>) => void): void;
-      set(items: Record<string, unknown>, callback?: () => void): void;
+    onMessage: {
+      addListener(
+        callback: (
+          message: unknown,
+          sender: { url?: string; origin?: string },
+          sendResponse: (response: unknown) => void
+        ) => boolean | void
+      ): void;
     };
   };
 };
 
 const logPrefix = '[ancore-extension/background]';
 
-const runtime = (globalThis as { chrome?: { runtime?: any } }).chrome?.runtime;
+const runtime = (globalThis as { chrome?: { runtime?: typeof chrome.runtime } }).chrome?.runtime;
 const manifest = (runtime?.getManifest?.() as ChromeRuntimeManifest | undefined) ?? {
   name: 'ancore-extension-wallet',
   version: '0.0.0',
@@ -68,50 +67,36 @@ console.info(`${logPrefix} booted`, {
   version: manifest.version,
 });
 
+void restoreUnlockSessionFromStorage().then((restored) => {
+  if (restored) {
+    console.info(`${logPrefix} unlock session restored from chrome.storage.session`);
+  }
+});
+
 runtime?.onInstalled?.addListener((details: ChromeInstalledDetails) => {
   console.info(`${logPrefix} installed`, { reason: details.reason });
 });
 
 runtime?.onStartup?.addListener(() => {
   console.info(`${logPrefix} startup`);
-  runServiceHealthProbes().catch((err) => {
+  probeServicesOnStartup().catch((err) => {
     console.warn(`${logPrefix} health probe failed on startup`, err);
   });
 });
 
-// ---------------------------------------------------------------------------
-// Service URL health probing
-// ---------------------------------------------------------------------------
-
 /**
- * Resolves the active service URLs from storage (or falls back to defaults),
- * validates their format, then probes /health on each service.
- * Results are cached in the config/urls module so the popup can read them.
+ * Stub listener for content script external API forwards.
+ * Replace with registerExternalHandlers() — see docs/wallets/FREIGHTER_COMPARISON.md §3.1
  */
-async function runServiceHealthProbes(): Promise<void> {
-  // Read persisted environment preference (defaults to 'production')
-  let environment = 'production';
-  try {
-    const raw = await getChromeStorage('ancore_dashboard_settings');
-    if (raw && typeof raw === 'string') {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof parsed['environment'] === 'string') {
-        environment = parsed['environment'];
-      }
-    }
-  } catch {
-    // Ignore storage errors — fall back to production
-  }
-
-  const config: ServiceUrlConfig = {
-    relayerUrl: resolveRelayerUrl(environment),
-    indexerUrl: resolveIndexerUrl(environment),
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const payload = message as {
+    type?: string;
+    requestId?: string;
+    method?: string;
+    origin?: string;
   };
 
-  // Synchronous format check first
-  const formatErrors = validateServiceUrls(config);
-  if (formatErrors.length > 0) {
-    console.warn(`${logPrefix} invalid service URLs`, formatErrors);
+  if (payload?.type !== 'EXTERNAL_API_REQUEST') {
     return;
   }
 
@@ -307,74 +292,6 @@ registerHandler('CHECK_SERVICE_HEALTH', async () => {
       indexer: { service: 'indexer' as const, status: 'unreachable' as const },
     };
   }
-});
-
-// ---------------------------------------------------------------------------
-// External API handlers (dApp connectivity)
-// ---------------------------------------------------------------------------
-
-// Register all external API handlers
-registerAllExternalHandlers();
-
-/**
- * Handle EXTERNAL_API_REQUEST messages from content script.
- * These are requests from dApps to interact with the wallet.
- */
-runtime?.onMessage?.addListener((message: any, sender: any, sendResponse: (response: any) => void) => {
-  if (message.type !== 'EXTERNAL_API_REQUEST') {
-    return false;
-  }
-
-  const request = message as ExternalApiRequest;
-  const { method, requestId, params, origin } = request;
-
-  // Validate origin
-  if (!origin || typeof origin !== 'string') {
-    sendResponse({
-      type: 'EXTERNAL_API_RESPONSE',
-      requestId,
-      ok: false,
-      error: 'Invalid origin',
-    });
-    return true;
-  }
-
-  // Validate sender origin matches
-  if (sender.origin && sender.origin !== origin) {
-    sendResponse({
-      type: 'EXTERNAL_API_RESPONSE',
-      requestId,
-      ok: false,
-      error: 'Origin mismatch',
-    });
-    return true;
-  }
-
-  // Dispatch to handler
-  dispatchExternalRequest(method as ExternalApiMethodName, {
-    origin,
-    params,
-    requestId,
-    sender,
-  })
-    .then((result) => {
-      sendResponse({
-        type: 'EXTERNAL_API_RESPONSE',
-        requestId,
-        ok: true,
-        result,
-      });
-    })
-    .catch((error: Error) => {
-      sendResponse({
-        type: 'EXTERNAL_API_RESPONSE',
-        requestId,
-        ok: false,
-        error: error.message,
-      });
-    });
-
-  return true; // Async response
 });
 
 // Activate the dispatcher — must be called after all handlers are registered.

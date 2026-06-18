@@ -80,9 +80,7 @@ export function createIndexerActivityAdapter(
   accountId: string
 ): TransactionHistoryAdapter {
   return {
-    async fetchTransactionPage(
-      params: FetchTransactionPageParams
-    ): Promise<HistoryPage> {
+    async fetchTransactionPage(params: FetchTransactionPageParams): Promise<HistoryPage> {
       const url = new URL(`/api/v1/accounts/${accountId}/activity`, baseUrl);
 
       if (params.cursor) {
@@ -108,9 +106,7 @@ export function createIndexerActivityAdapter(
       const body: IndexerActivityResponse = await response.json();
 
       return {
-        transactions: body.data.map((activity) =>
-          mapActivityToTransaction(activity, accountId)
-        ),
+        transactions: body.data.map((activity) => mapActivityToTransaction(activity, accountId)),
         nextCursor: body.pagination.next_cursor,
       };
     },

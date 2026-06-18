@@ -2,6 +2,8 @@
 
 React Native mobile wallet application for the Ancore ecosystem.
 
+**Agent / contributor guide:** [AGENTS.md](./AGENTS.md) (modeled on [Freighter Mobile AGENTS.md](https://github.com/stellar/freighter-mobile/blob/main/AGENTS.md)).
+
 ## Features
 
 - **Account Management**: Create, import, and recover Stellar accounts
@@ -55,7 +57,7 @@ import { usePaginatedTransactionHistory } from './screens/history/usePaginatedTr
 
 function HistoryScreen() {
   const accountId = 'GABC123...'; // Current user's account ID
-  
+
   const adapter = createIndexerActivityAdapter(
     process.env.EXPO_PUBLIC_INDEXER_URL!,
     accountId

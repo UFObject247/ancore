@@ -332,11 +332,11 @@ This docker-compose stack is **for development only**. For production:
 - Set up automated backups
 - Configure log aggregation
 
-See `docs/ops/` for production deployment guides.
+See [docs/ops/README.md](../ops/README.md) for observability configuration.
 
 ## Next Steps
 
 - [Indexer API Documentation](../../services/indexer/README.md)
 - [Relayer API Documentation](../../services/relayer/README.md)
-- [Production Deployment](../ops/deployment.md)
-- [Monitoring Setup](../ops/monitoring.md)
+- [Ops overview](../ops/README.md)
+- [SLO definitions](../ops/slo-definitions.md)

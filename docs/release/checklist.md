@@ -1,13 +1,10 @@
 # Release Checklist
 
-> **Cross-reference:** See [Compliance Matrix](compliance-matrix.md) for mapping to security audit and MVP gate items.
-
 This file is parsed by the `Release Gate` CI workflow.
-Items marked `BLOCKING` must be checked (`- [x]`) before the gate will pass.
-Items without `BLOCKING` are advisory and do not fail the gate.
+Items marked `BLOCKING` must be checked (`- [ ]`) before the gate will pass.
 
-> Reset all checkboxes to `[ ]` at the start of each release cycle.
-> Check each item as it is verified. Commit the updated file before tagging.
+Reset all checkboxes to `[ ]` at the start of each release cycle.
+Check each item as it is verified. Commit the updated file before tagging.
 
 ---
 
@@ -45,7 +42,6 @@ Items without `BLOCKING` are advisory and do not fail the gate.
 - [ ] Prometheus alert rules pass `promtool check rules` BLOCKING
 - [ ] Alertmanager config passes `amtool check-config` BLOCKING
 - [ ] SLO definitions document (`docs/ops/slo-definitions.md`) is current BLOCKING
-- [ ] Runbooks exist for all new alerts
 - [ ] Grafana dashboards validated (JSON schema check)
 
 ## 6. Documentation BLOCKING

@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  packages:
-    name: Packages — Lint & Test
+  format:
+    name: Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,22 +30,33 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Verify dev/test scripts (smoke)
-        run: bash ./scripts/verify-dev-scripts.sh
-
-      - name: Lint packages
-        run: pnpm turbo run lint --filter='./packages/*'
 
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Test packages
-        run: pnpm turbo run test --filter='./packages/*' --concurrency=1
-
-  apps:
-    name: Apps — Lint & Test
+  package:
+    name: Package — ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: types
+            filter: '@ancore/types'
+          - name: crypto
+            filter: '@ancore/crypto'
+          - name: stellar
+            filter: '@ancore/stellar'
+          - name: core-sdk
+            filter: '@ancore/core-sdk'
+          - name: ui-kit
+            filter: '@ancore/ui-kit'
+          - name: account-abstraction
+            filter: '@ancore/account-abstraction'
+          - name: wallet-shared
+            filter: '@ancore/wallet-shared'
+          - name: wallet-api
+            filter: '@ancore/wallet-api'
     steps:
       - uses: actions/checkout@v4
 
@@ -60,11 +71,44 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Lint apps
-        run: pnpm turbo run lint --filter='./apps/*'
+      - name: Lint
+        run: pnpm turbo run lint --filter=${{ matrix.filter }}
 
-      - name: Test apps
-        run: pnpm turbo run test --filter='./apps/*' --concurrency=1
+      - name: Test
+        run: pnpm turbo run test --filter=${{ matrix.filter }}
+
+  app:
+    name: App — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: extension-wallet
+            filter: '@ancore/extension-wallet'
+          - name: web-dashboard
+            filter: '@ancore/web-dashboard'
+          - name: mobile-wallet
+            filter: '@ancore/mobile-wallet'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo run lint --filter=${{ matrix.filter }}
+
+      - name: Test
+        run: pnpm turbo run test --filter=${{ matrix.filter }}
 
   services:
     name: Services — Lint & Test

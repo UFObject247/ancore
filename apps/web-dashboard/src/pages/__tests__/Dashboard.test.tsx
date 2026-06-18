@@ -3,10 +3,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from '../Dashboard';
-import {
-  AccountNotFoundError,
-  HorizonUnavailableError,
-} from '../../hooks/useAccountOverview';
+import { AccountNotFoundError, HorizonUnavailableError } from '../../hooks/useAccountOverview';
 
 const mockUseAccountData = vi.fn();
 const mockUseIndexerActivity = vi.fn();
@@ -22,7 +19,7 @@ vi.mock('../../hooks/useIndexerActivity', () => ({
 
 vi.mock('../../hooks/useAccountOverview', async () => {
   const actual = await vi.importActual<typeof import('../../hooks/useAccountOverview')>(
-    '../../hooks/useAccountOverview',
+    '../../hooks/useAccountOverview'
   );
 
   return {
@@ -88,7 +85,7 @@ describe('Dashboard', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Account not found');
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'This account does not exist on the selected network.',
+      'This account does not exist on the selected network.'
     );
   });
 
@@ -107,7 +104,7 @@ describe('Dashboard', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Horizon is unavailable');
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'The Stellar Horizon service is temporarily unavailable. Please retry shortly.',
+      'The Stellar Horizon service is temporarily unavailable. Please retry shortly.'
     );
 
     await user.click(screen.getByRole('button', { name: 'Retry' }));

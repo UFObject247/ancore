@@ -14,15 +14,11 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
         outline: 'text-foreground',
-        // Transaction status variants — WCAG AA contrast verified
-        success:
-          'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-        warning:
-          'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
-        pending:
-          'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300',
-        failed:
-          'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300',
+        // Transaction status variants — semantic theme tokens (see globals.css)
+        success: 'border-success/25 bg-success/10 text-success',
+        warning: 'border-warning/25 bg-warning/10 text-warning',
+        pending: 'border-primary/25 bg-primary/10 text-primary',
+        failed: 'border-destructive/25 bg-destructive/10 text-destructive',
       },
     },
     defaultVariants: {

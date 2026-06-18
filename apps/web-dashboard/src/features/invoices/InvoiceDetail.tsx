@@ -37,9 +37,7 @@ export function InvoiceDetail({ invoice, onPay, onCancel }: InvoiceDetailProps) 
             {invoice.reference || `Invoice #${invoice.id.slice(0, 8)}`}
           </CardTitle>
           <span
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              statusColors[invoice.status]
-            }`}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[invoice.status]}`}
           >
             {statusLabels[invoice.status]}
           </span>
@@ -98,11 +96,7 @@ export function InvoiceDetail({ invoice, onPay, onCancel }: InvoiceDetailProps) 
             </Button>
           )}
           {canCancel && onCancel && (
-            <Button
-              onClick={() => onCancel(invoice)}
-              variant="outline"
-              className="flex-1"
-            >
+            <Button onClick={() => onCancel(invoice)} variant="outline" className="flex-1">
               Cancel Invoice
             </Button>
           )}

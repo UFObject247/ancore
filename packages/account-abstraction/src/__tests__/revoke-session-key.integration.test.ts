@@ -98,9 +98,7 @@ describe('revokeSessionKey + TransactionBuilder composition', () => {
 
   it('can chain revokeSessionKey with other builder ops', async () => {
     const builder = new TransactionBuilder(SOURCE_ACCOUNT, CONTRACT_ID);
-    builder
-      .addSessionKey(Keypair.random().publicKey(), [1], Date.now() + 60_000)
-      .revokeSessionKey(SESSION_KEY);
+    builder.addSessionKey('b'.repeat(64), [1], Date.now() + 60_000).revokeSessionKey(SESSION_KEY);
 
     const sim = await builder.simulate();
     expect(sim.operationCount).toBe(2);

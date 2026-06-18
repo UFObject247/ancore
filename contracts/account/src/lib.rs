@@ -1144,7 +1144,7 @@ mod test {
         let events_list = env.events().all();
         let migrated_event = events_list.iter().find(|(_, topics, _)| {
             topics.iter().any(|t| {
-                let sym: soroban_sdk::Symbol = soroban_sdk::FromVal::from_val(&env, t);
+                let sym: soroban_sdk::Symbol = soroban_sdk::FromVal::from_val(&env, &t);
                 sym == events::migrated(&env)
             })
         });
@@ -1300,15 +1300,14 @@ mod test {
     #[test]
     fn test_permission_execute_constant_value() {
         assert_eq!(
-            PERMISSION_EXECUTE,
-            1u32,
+            PERMISSION_EXECUTE, 1u32,
             "PERMISSION_EXECUTE value changed — update permission bit tables in \
              contracts/account/README.md and docs/contract-methods.md"
         );
     }
 
     #[test]
-    fn test_upgrade_rejects_same_wasm_hash() {
+    fn test_upgrade_accepts_current_wasm_hash() {
         let env = Env::default();
         let contract_id = env.register_contract(None, AncoreAccount);
         let client = AncoreAccountClient::new(&env, &contract_id);
@@ -1317,9 +1316,20 @@ mod test {
         init(&env, &client, &owner);
         env.mock_all_auths();
 
-        let upgrade_hash = BytesN::from_array(&env, &[7; 32]);
+        // SHA-256 of the empty WASM blob registered by default in the test environment.
+        let current_wasm_hash = BytesN::from_array(
+            &env,
+            &[
+                0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f,
+                0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
+                0x78, 0x52, 0xb8, 0x55,
+            ],
+        );
 
-        let result = client.try_upgrade(&upgrade_hash);
-        assert!(result.is_ok());
+        let result = client.try_upgrade(&current_wasm_hash);
+        assert!(
+            result.is_ok(),
+            "re-upgrading to the already-deployed wasm hash is allowed as a no-op"
+        );
     }
 }

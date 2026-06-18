@@ -56,6 +56,8 @@ ancore/
 │   ├── crypto/               # Cryptographic utilities
 │   ├── ui-kit/               # Shared UI components
 │   ├── types/                # Shared TypeScript types
+│   ├── wallet-shared/      # dApp protocol, networks, allowlist keys
+│   ├── wallet-api/         # npm SDK for dApps (@ancore/wallet-api)
 │   └── test-fixtures/        # Shared test fixtures for apps and services
 │
 ├── contracts/                # Soroban smart contracts

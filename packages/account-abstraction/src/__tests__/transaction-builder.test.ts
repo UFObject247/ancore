@@ -42,9 +42,7 @@ describe('TransactionBuilder', () => {
 
   it('should execute contract operations', () => {
     const builder = new TransactionBuilder(source, contractId);
-    builder.execute(validSessionKey, [
-      { contractId: 'CID', method: 'foo', args: [1, 2] },
-    ]);
+    builder.execute(validSessionKey, [{ contractId: 'CID', method: 'foo', args: [1, 2] }]);
     // @ts-expect-no-error: internal ops
     expect(builder['ops']).toContainEqual({
       type: 'contractExecute',

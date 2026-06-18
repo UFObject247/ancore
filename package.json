@@ -75,6 +75,12 @@
     "packages/account-abstraction/src/**/*.{ts,tsx,js,jsx}": [
       "pnpm --dir packages/account-abstraction exec eslint --fix"
     ],
+    "packages/wallet-shared/src/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir packages/wallet-shared exec eslint --fix"
+    ],
+    "packages/wallet-api/src/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir packages/wallet-api exec eslint --fix"
+    ],
     "apps/extension-wallet/src/**/*.{ts,tsx,js,jsx}": [
       "pnpm --dir apps/extension-wallet exec eslint --fix"
     ],

@@ -41,6 +41,7 @@ interface ChromeMock {
     session: {
       get: ReturnType<typeof vi.fn>;
       set: ReturnType<typeof vi.fn>;
+      remove: ReturnType<typeof vi.fn>;
     };
   };
 }
@@ -79,6 +80,10 @@ function buildChromeMock(): ChromeMock {
         ),
         set: vi.fn((items: Record<string, unknown>, cb?: () => void) => {
           Object.assign(sessionStore, items);
+          cb?.();
+        }),
+        remove: vi.fn((key: string, cb?: () => void) => {
+          delete sessionStore[key];
           cb?.();
         }),
       },

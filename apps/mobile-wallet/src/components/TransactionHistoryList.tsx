@@ -2,12 +2,14 @@ import { type Transaction } from '../screens/history/types';
 import { type HistoryError } from '../screens/history/errorTypes';
 import { TransactionStatusIcon } from './TransactionStatusIcon';
 import { HistoryError as HistoryErrorComponent } from './HistoryError';
+import { PullToRefreshControl } from './PullToRefreshControl';
 
 type Props = {
   transactions: Transaction[];
   isLoadingInitial: boolean;
   isLoadingMore: boolean;
   isRefreshing: boolean;
+  isOffline?: boolean;
   hasMore: boolean;
   error: HistoryError | null;
   onRetry: () => void;
@@ -25,6 +27,7 @@ export const TransactionHistoryList = ({
   isLoadingInitial,
   isLoadingMore,
   isRefreshing,
+  isOffline = false,
   hasMore,
   error,
   onRetry,
@@ -51,16 +54,29 @@ export const TransactionHistoryList = ({
 
   if (transactions.length === 0) {
     return (
-      <section>
+      <PullToRefreshControl isRefreshing={isRefreshing} onRefresh={onRefresh}>
+        {isOffline ? (
+          <p aria-live="polite" role="status">
+            You are offline. Transaction history will refresh when your connection returns.
+          </p>
+        ) : null}
         <p>No transactions yet.</p>
-        <button onClick={onRefresh}>Refresh</button>
-      </section>
+        <button onClick={onRefresh} disabled={isRefreshing || isOffline}>
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </PullToRefreshControl>
     );
   }
 
   return (
-    <section>
-      <button onClick={onRefresh} disabled={isRefreshing}>
+    <PullToRefreshControl isRefreshing={isRefreshing} onRefresh={onRefresh}>
+      {isOffline ? (
+        <p aria-live="polite" role="status">
+          You are offline. Transaction history will refresh when your connection returns.
+        </p>
+      ) : null}
+
+      <button onClick={onRefresh} disabled={isRefreshing || isOffline}>
         {isRefreshing ? 'Refreshing...' : 'Refresh'}
       </button>
 
@@ -93,6 +109,6 @@ export const TransactionHistoryList = ({
       ) : (
         <p>End of transaction history</p>
       )}
-    </section>
+    </PullToRefreshControl>
   );
 };

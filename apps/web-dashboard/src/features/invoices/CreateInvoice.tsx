@@ -2,12 +2,7 @@ import * as React from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import {
-  Form,
-  AddressInput,
-  AmountInput as FormAmountInput,
-  FormSubmit,
-} from '@ancore/ui-kit';
+import { Form, AddressInput, AmountInput as FormAmountInput, FormSubmit } from '@ancore/ui-kit';
 import { Card, CardContent, CardHeader, CardTitle } from '@ancore/ui-kit';
 import { Input } from '@ancore/ui-kit';
 import { Label } from '@ancore/ui-kit';
@@ -46,20 +41,11 @@ export function CreateInvoice({ onSubmit, onCancel }: CreateInvoiceProps) {
               required
             />
 
-            <FormAmountInput
-              name="amount"
-              label="Amount"
-              placeholder="0.00"
-              required
-            />
+            <FormAmountInput name="amount" label="Amount" placeholder="0.00" required />
 
             <div className="space-y-2">
               <Label htmlFor="asset">Asset</Label>
-              <Input
-                id="asset"
-                {...form.register('asset')}
-                placeholder="XLM"
-              />
+              <Input id="asset" {...form.register('asset')} placeholder="XLM" />
             </div>
 
             <div className="space-y-2">
@@ -74,11 +60,7 @@ export function CreateInvoice({ onSubmit, onCancel }: CreateInvoiceProps) {
 
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date (optional)</Label>
-              <Input
-                id="dueDate"
-                type="datetime-local"
-                {...form.register('dueDate')}
-              />
+              <Input id="dueDate" type="datetime-local" {...form.register('dueDate')} />
             </div>
 
             <div className="space-y-2">

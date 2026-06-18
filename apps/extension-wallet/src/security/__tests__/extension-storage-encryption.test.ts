@@ -1,13 +1,12 @@
+import '../../../../../packages/ensure-webcrypto';
 import { webcrypto } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EncryptedPayload } from '@ancore/core-sdk';
 
-if (!globalThis.crypto?.subtle) {
-  Object.defineProperty(globalThis, 'crypto', {
-    value: webcrypto,
-    configurable: true,
-  });
-}
+Object.defineProperty(globalThis, 'crypto', {
+  value: webcrypto,
+  configurable: true,
+});
 
 if (!globalThis.btoa) {
   globalThis.btoa = (value: string) => Buffer.from(value, 'binary').toString('base64');
@@ -72,7 +71,9 @@ describe('Extension storage encryption audit', () => {
   });
 
   it('never stores plaintext secrets in chrome.storage.local', async () => {
-    const adapter = new ChromeStorageAdapter(mockStorage.area as unknown as chrome.storage.StorageArea);
+    const adapter = new ChromeStorageAdapter(
+      mockStorage.area as unknown as chrome.storage.StorageArea
+    );
     const manager = new SecureStorageManager(adapter);
 
     await manager.unlock(password);

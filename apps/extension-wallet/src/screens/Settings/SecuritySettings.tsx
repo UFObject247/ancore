@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { SecureStorageManager } from '@ancore/core-sdk';
 import { AlertTriangle, Eye, EyeOff, Check, Copy, Monitor, X } from 'lucide-react';
 import { Button, Input } from '@ancore/ui-kit';
 import {
@@ -636,9 +637,32 @@ function SecurityMenu({
           label="Require password for exports"
           description="Gate key/mnemonic reveal behind password"
           value={requirePasswordForSensitiveActions ? 'Enabled' : 'Disabled'}
-          onClick={() =>
-            onRequirePasswordForSensitiveActionsChange(!requirePasswordForSensitiveActions)
-          }
+          onClick={async () => {
+            if (requirePasswordForSensitiveActions) {
+              onRequirePasswordForSensitiveActionsChange(false);
+              return;
+            }
+
+            try {
+              const password = window.prompt(
+                'Enter your wallet password to enable password protection for exports'
+              );
+              if (!password) return;
+
+              const storage = SecureStorageManager.shared?.() ?? SecureStorageManager;
+
+              const vault: any = await storage.unlock(password);
+              if (typeof vault.verifyPassword === 'function') {
+                await vault.verifyPassword(password);
+              }
+
+              onRequirePasswordForSensitiveActionsChange(true);
+            } catch (err) {
+              // do not log plaintext; show minimal error
+
+              alert('Incorrect password. Cannot enable password protection.');
+            }
+          }}
         />
         <MenuItem
           label="Lock shortcut"
