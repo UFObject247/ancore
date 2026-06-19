@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createProductionSendService } from '../send-service';
 import { StellarClient } from '@ancore/stellar';
 import { sendMessage } from '../../messaging';
@@ -8,9 +8,7 @@ vi.mock('../../messaging', () => ({
   sendMessage: vi.fn(),
 }));
 
-// Mock fetch for relayer and Horizon
-global.fetch = vi.fn();
-
+// Fetch is mocked per-test via vi.stubGlobal
 const VALID_ACCOUNT = 'GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB';
 const VALID_DESTINATION = 'GBHHL5543KUJHAWEBZZZIJHQP2EMYY3YPZS2WRJDQ7X6G5HC77625CW7';
 
@@ -20,6 +18,7 @@ describe('createProductionSendService', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubGlobal('fetch', vi.fn());
 
     stellarClient = {
       getAccount: vi.fn().mockResolvedValue({ id: VALID_ACCOUNT, sequence: '123' }),
@@ -35,6 +34,10 @@ describe('createProductionSendService', () => {
       environment: 'test',
       isContractAccount: false,
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('signTransaction', () => {
@@ -110,7 +113,9 @@ describe('createProductionSendService', () => {
         json: vi.fn().mockResolvedValue({ error: 'Relayer rejected' }),
       } as unknown as Response);
 
-      await expect(service.submitTransaction('signed_xdr_mock')).rejects.toThrow();
+      await expect(service.submitTransaction('signed_xdr_mock')).rejects.toThrow(
+        /Something went wrong: An unexpected error occurred|Network Error:/
+      );
     });
   });
 });

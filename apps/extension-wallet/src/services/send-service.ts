@@ -61,11 +61,14 @@ export function createProductionSendService(options: ProductionSendServiceOption
 
     async signTransaction(tx: SendTransactionDraft): Promise<string> {
       const unsignedXdr = await buildPaymentXdr(tx);
-      const { signedXdr } = await sendMessage('SIGN_TRANSACTION', {
+      const response = await sendMessage('SIGN_TRANSACTION', {
         xdr: unsignedXdr,
         networkPassphrase: stellarClient.getNetworkPassphrase(),
       });
-      return signedXdr;
+      if ('error' in response) {
+        throw new Error(response.error);
+      }
+      return response.signedXdr;
     },
 
     async submitTransaction(signedPayload: string): Promise<{ txId: string }> {
@@ -91,7 +94,10 @@ export function createProductionSendService(options: ProductionSendServiceOption
           }
 
           const data = await response.json();
-          return { txId: data.hash || data.txId || 'unknown_hash' };
+          if (!data.hash && !data.txId) {
+            throw new Error('Relayer submission failed: Missing transaction ID in response');
+          }
+          return { txId: data.hash || data.txId };
         } catch (error) {
           const userMsg = getErrorUserMessage(error);
           throw new Error(`${userMsg.title}: ${userMsg.description}`);

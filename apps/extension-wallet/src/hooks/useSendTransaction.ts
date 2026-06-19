@@ -25,7 +25,7 @@ import { computeMaxSendable, BASE_SEND_RESERVE, DEFAULT_SEND_FEE } from '@/utils
 import { useDashboardSettingsStore } from '@/state/dashboard-settings';
 import { createProductionSendService } from '@/services/send-service';
 import { createStellarClient } from '@ancore/stellar';
-
+import { useAccountStore } from '@/stores/account';
 export type SendStep = 'form' | 'review' | 'confirm' | 'status' | 'scheduled';
 export type TxStatus = 'idle' | 'pending' | 'confirmed' | 'failed';
 export type TransferPolicyAction = 'allow' | 'step_up' | 'block';
@@ -83,6 +83,7 @@ export interface UseSendTransactionOptions {
   transferStepUpThreshold?: number;
   todayTransferTotal?: number;
   accountAddress?: string;
+  isContractAccount?: boolean;
   schedulerClient?: SchedulerClient;
 }
 
@@ -165,7 +166,16 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
   const dailyTransferLimit = options.dailyTransferLimit ?? DEFAULT_DAILY_LIMIT;
   const transferStepUpThreshold = options.transferStepUpThreshold ?? DEFAULT_STEP_UP_THRESHOLD;
   const todayTransferTotal = options.todayTransferTotal ?? 0;
-  const accountAddress = options.accountAddress ?? DEMO_ACCOUNT_ADDRESS;
+
+  const activeAccountId = useAccountStore((state) => state.activeAccountId);
+  const accounts = useAccountStore((state) => state.accounts);
+  const activeAccount = useMemo(
+    () => accounts.find((a) => a.id === activeAccountId),
+    [accounts, activeAccountId]
+  );
+
+  const accountAddress = options.accountAddress ?? activeAccount?.address ?? DEMO_ACCOUNT_ADDRESS;
+  const isContractAccount = options.isContractAccount ?? accountAddress.startsWith('C');
   const schedulerClient = useMemo(
     () => options.schedulerClient ?? getExtensionSchedulerClient(),
     [options.schedulerClient]
@@ -177,8 +187,13 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
   const service = useMemo(
     () =>
       options.service ??
-      createProductionSendService({ stellarClient, accountAddress, environment }),
-    [accountAddress, environment, options.service, stellarClient]
+      createProductionSendService({
+        stellarClient,
+        accountAddress,
+        environment,
+        isContractAccount,
+      }),
+    [accountAddress, environment, isContractAccount, options.service, stellarClient]
   );
 
   const [step, setStep] = useState<SendStep>('form');
