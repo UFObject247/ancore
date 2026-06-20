@@ -12,7 +12,6 @@ import {
 import { ArrowLeft, Download } from 'lucide-react';
 import { PaymentQRCode } from '@/components/PaymentQRCode';
 import { useCopyWithFeedback } from '@/hooks/useCopyWithFeedback';
-import { useExtensionAuth } from '@/router/AuthGuard';
 import type { Network } from '@ancore/types';
 
 export interface ReceiveScreenProps {
@@ -46,7 +45,6 @@ function buildPaymentUri(destination: string, network: Network): string {
 }
 
 function downloadSvgAsPng(svgElement: SVGSVGElement, filename: string) {
-  const xmlns = 'http://www.w3.org/2000/svg';
   const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
   const bounds = svgElement.getBoundingClientRect();
   const width = bounds.width;
@@ -80,8 +78,8 @@ function downloadSvgAsPng(svgElement: SVGSVGElement, filename: string) {
 }
 
 export function ReceiveScreen({
-  smartAccountId: smartAccountIdProp,
-  ownerPublicKey: ownerPublicKeyProp,
+  smartAccountId,
+  ownerPublicKey,
   network = 'mainnet',
   onBack,
   className,
@@ -90,20 +88,11 @@ export function ReceiveScreen({
   const { copy: copyPublicKey, copied: publicKeyCopied } = useCopyWithFeedback();
   const qrRef = React.useRef<SVGSVGElement>(null);
 
-  let smartAccountId = smartAccountIdProp;
-  let ownerPublicKey = ownerPublicKeyProp;
-
-  try {
-    const { authState } = useExtensionAuth();
-    if (!smartAccountId && authState.smartAccountId) {
-      smartAccountId = authState.smartAccountId;
+  const handleDownload = React.useCallback(() => {
+    if (qrRef.current && smartAccountId) {
+      downloadSvgAsPng(qrRef.current, `ancore-receive-${smartAccountId.slice(0, 8)}.png`);
     }
-    if (!ownerPublicKey && authState.accountAddress !== 'GCFX...WALLET') {
-      ownerPublicKey = authState.accountAddress;
-    }
-  } catch {
-    // Not inside ExtensionAuthProvider — use provided props only
-  }
+  }, [smartAccountId]);
 
   if (!smartAccountId) {
     return (
@@ -137,12 +126,6 @@ export function ReceiveScreen({
   }
 
   const paymentUri = buildPaymentUri(smartAccountId, network);
-
-  const handleDownload = React.useCallback(() => {
-    if (qrRef.current) {
-      downloadSvgAsPng(qrRef.current, `ancore-receive-${smartAccountId.slice(0, 8)}.png`);
-    }
-  }, [smartAccountId]);
 
   return (
     <Card className={cn('mx-auto w-full max-w-md border-slate-200', className)}>
