@@ -192,6 +192,9 @@ importers:
       '@ancore/core-sdk':
         specifier: workspace:*
         version: link:../../packages/core-sdk
+      '@ancore/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@ancore/types':
         specifier: workspace:*
         version: link:../../packages/types
