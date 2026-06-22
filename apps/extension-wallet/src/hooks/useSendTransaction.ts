@@ -21,6 +21,7 @@ import {
 } from '@/services/scheduler-client';
 import { resolveHandle as defaultResolveHandle } from '@/services/handle-resolver';
 import type { SimulationState } from '@/screens/Send/SimulationPreview';
+import type { SorobanResourceLimits } from '@/services/simulation-service';
 import { computeMaxSendable, BASE_SEND_RESERVE, DEFAULT_SEND_FEE } from '@/utils/amount';
 import { useDashboardSettingsStore } from '@/state/dashboard-settings';
 import { createProductionSendService } from '@/services/send-service';
@@ -54,9 +55,13 @@ export interface SendTransactionDraft extends SendFormValues {
   resolvedHandle?: ResolvedHandle;
 }
 
-export interface SimulationResult {
-  simulatedFee: string;
-  outcome: string;
+export interface UiSimulationResult {
+  fee: string;
+  resourceLimits: SorobanResourceLimits;
+  authEntries: string[];
+  footprint: string;
+  outcome?: string;
+  error?: string;
 }
 
 export interface SendService {
@@ -66,7 +71,7 @@ export interface SendService {
   signTransaction: (tx: SendTransactionDraft) => Promise<string>;
   submitTransaction: (signedPayload: string) => Promise<{ txId: string }>;
   fetchTransactionStatus: (txId: string) => Promise<TxStatus>;
-  simulateTransaction?: (tx: SendTransactionDraft) => Promise<SimulationResult>;
+  simulateTransaction?: (tx: SendTransactionDraft) => Promise<UiSimulationResult>;
   createScheduledTransfer?: (
     tx: SendTransactionDraft,
     schedule: ScheduleConfig
@@ -332,10 +337,36 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
           service
             .simulateTransaction(draft)
             .then((result) => {
+              if (result.error) {
+                setSimulation({ status: 'error', message: result.error });
+                return;
+              }
+
+              const simulatedFee = result.fee;
+              const updatedFee: FeeEstimate = {
+                ...estimatedFee,
+                totalFee: simulatedFee,
+                baseFee: simulatedFee,
+              };
+              const updatedTotal = (Number(values.amount) + Number(simulatedFee)).toFixed(7);
+
+              setFee(updatedFee);
+              setTx((current) =>
+                current
+                  ? {
+                      ...current,
+                      fee: updatedFee,
+                      total: updatedTotal,
+                    }
+                  : current
+              );
               setSimulation({
                 status: 'success',
-                simulatedFee: result.simulatedFee,
-                outcome: result.outcome,
+                simulatedFee,
+                outcome: result.outcome ?? 'success',
+                authEntries: result.authEntries,
+                footprint: result.footprint,
+                resourceLimits: result.resourceLimits,
               });
             })
             .catch((err: unknown) => {

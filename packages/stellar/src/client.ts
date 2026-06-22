@@ -4,6 +4,7 @@
 
 import { rpc as StellarRpc, Horizon, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { Transaction } from '@stellar/stellar-sdk';
+import { parseSimulationResponse, simulateUnsignedTransaction, type ParsedSimulationResult } from './simulation';
 import type { Network, NetworkConfig } from '@ancore/types';
 import {
   StellarError,
@@ -621,6 +622,24 @@ export class StellarClient {
       }
       throw error;
     }
+  }
+
+  /**
+   * Simulate an unsigned transaction against Soroban RPC.
+   *
+   * @param unsignedXdr - Unsigned transaction envelope XDR
+   * @returns Parsed fee, resource limits, auth entries, and footprint
+   */
+  async simulateTransaction(unsignedXdr: string): Promise<ParsedSimulationResult> {
+    return simulateUnsignedTransaction(unsignedXdr, this.networkPassphrase, (transaction) =>
+      this.executeRpcWithFailover((server) => server.simulateTransaction(transaction))
+    ).catch((error) => ({
+      fee: '0.0000000',
+      resourceLimits: { cpuInsn: 0, memBytes: 0 },
+      authEntries: [],
+      footprint: '',
+      error: error instanceof Error ? error.message : 'Simulation request failed',
+    }));
   }
 
   /**

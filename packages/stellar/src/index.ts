@@ -40,3 +40,7 @@ export type { RetryOptions, RetryPresetConfig, RetryPresetName } from './retry';
 // Fee stats
 export { fetchFeeStats, FALLBACK_FEE_STATS } from './fee-stats';
 export type { FeeStats, FeeStatsOptions } from './fee-stats';
+
+// Simulation
+export { parseSimulationResponse, simulateUnsignedTransaction } from './simulation';
+export type { ParsedSimulationResult, SorobanResourceLimits } from './simulation';

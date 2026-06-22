@@ -8,6 +8,12 @@ vi.mock('../../messaging', () => ({
   sendMessage: vi.fn(),
 }));
 
+vi.mock('../simulation-service', () => ({
+  simulateTransaction: vi.fn(),
+}));
+
+import { simulateTransaction } from '../simulation-service';
+
 // Fetch is mocked per-test via vi.stubGlobal
 const VALID_ACCOUNT = 'GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB';
 const VALID_DESTINATION = 'GBHHL5543KUJHAWEBZZZIJHQP2EMYY3YPZS2WRJDQ7X6G5HC77625CW7';
@@ -62,6 +68,57 @@ describe('createProductionSendService', () => {
         })
       );
       expect(result).toBe('signed_xdr_mock');
+    });
+  });
+
+  describe('simulateTransaction', () => {
+    it('builds unsigned XDR and maps simulation results', async () => {
+      vi.mocked(simulateTransaction).mockResolvedValueOnce({
+        fee: '0.0000600',
+        resourceLimits: { cpuInsn: 12000, memBytes: 2048 },
+        authEntries: [],
+        footprint: '',
+      });
+
+      const txDraft = {
+        to: VALID_DESTINATION,
+        amount: '10.5',
+        total: '10.5000100',
+        fee: { baseFee: '0.0000100', totalFee: '0.0000100', network: 'testnet' as const },
+      };
+
+      const result = await service.simulateTransaction!(txDraft);
+
+      expect(simulateTransaction).toHaveBeenCalledWith(
+        expect.any(String),
+        'testnet',
+        expect.objectContaining({ client: stellarClient })
+      );
+      expect(result.fee).toBe('0.0000600');
+      expect(result.outcome).toBe('success');
+      expect(result.error).toBeUndefined();
+    });
+
+    it('returns simulation errors without throwing', async () => {
+      vi.mocked(simulateTransaction).mockResolvedValueOnce({
+        fee: '0.0000000',
+        resourceLimits: { cpuInsn: 0, memBytes: 0 },
+        authEntries: [],
+        footprint: '',
+        error: 'HostError: contract trapped',
+      });
+
+      const txDraft = {
+        to: VALID_DESTINATION,
+        amount: '10.5',
+        total: '10.5000100',
+        fee: { baseFee: '0.0000100', totalFee: '0.0000100', network: 'testnet' as const },
+      };
+
+      const result = await service.simulateTransaction!(txDraft);
+
+      expect(result.error).toBe('HostError: contract trapped');
+      expect(result.outcome).toBeUndefined();
     });
   });
 

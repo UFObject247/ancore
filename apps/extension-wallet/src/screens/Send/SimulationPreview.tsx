@@ -5,20 +5,33 @@
  * Renders three states:
  *  - loading  — simulation is in progress
  *  - error    — simulation failed (shows reason, blocks confirm)
- *  - success  — shows simulated fee and outcome
- *
- * Issue #671
+ *  - success  — shows simulated fee, resource limits, auth, and footprint
  */
 
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import type { SorobanResourceLimits } from '@/services/simulation-service';
 
 export type SimulationState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'success'; simulatedFee: string; outcome: string };
+  | {
+      status: 'success';
+      simulatedFee: string;
+      outcome: string;
+      authEntries?: string[];
+      footprint?: string;
+      resourceLimits?: SorobanResourceLimits;
+    };
 
 interface SimulationPreviewProps {
   simulation: SimulationState;
+}
+
+function truncateValue(value: string, maxLength = 24): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength)}…`;
 }
 
 export function SimulationPreview({ simulation }: SimulationPreviewProps) {
@@ -46,7 +59,7 @@ export function SimulationPreview({ simulation }: SimulationPreviewProps) {
         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <div className="space-y-0.5">
           <span className="block font-black uppercase tracking-widest text-[10px] text-amber-400">
-            Simulation Warning
+            Simulation Failed
           </span>
           <span className="leading-relaxed">{simulation.message}</span>
         </div>
@@ -54,7 +67,10 @@ export function SimulationPreview({ simulation }: SimulationPreviewProps) {
     );
   }
 
-  // success
+  const authEntries = simulation.authEntries ?? [];
+  const hasAuthEntries = authEntries.length > 0;
+  const hasFootprint = Boolean(simulation.footprint);
+
   return (
     <div
       data-testid="simulation-success"
@@ -70,7 +86,9 @@ export function SimulationPreview({ simulation }: SimulationPreviewProps) {
         <span className="text-slate-500 uppercase tracking-widest font-bold text-[10px]">
           Simulated Fee
         </span>
-        <span className="font-mono text-slate-300">{simulation.simulatedFee} XLM</span>
+        <span className="font-mono text-slate-300" data-testid="simulated-fee">
+          {simulation.simulatedFee} XLM
+        </span>
       </div>
       <div className="flex justify-between text-xs">
         <span className="text-slate-500 uppercase tracking-widest font-bold text-[10px]">
@@ -78,6 +96,36 @@ export function SimulationPreview({ simulation }: SimulationPreviewProps) {
         </span>
         <span className="font-mono text-emerald-300 capitalize">{simulation.outcome}</span>
       </div>
+      {simulation.resourceLimits && simulation.resourceLimits.cpuInsn > 0 && (
+        <div className="flex justify-between text-xs">
+          <span className="text-slate-500 uppercase tracking-widest font-bold text-[10px]">
+            CPU Instructions
+          </span>
+          <span className="font-mono text-slate-300">{simulation.resourceLimits.cpuInsn}</span>
+        </div>
+      )}
+      {hasAuthEntries && (
+        <div className="space-y-1 text-xs" data-testid="simulation-auth-entries">
+          <span className="text-slate-500 uppercase tracking-widest font-bold text-[10px]">
+            Auth Entries ({authEntries.length})
+          </span>
+          {authEntries.map((entry, index) => (
+            <div key={`${entry.slice(0, 8)}-${index}`} className="font-mono text-[10px] text-slate-400 break-all">
+              {truncateValue(entry, 48)}
+            </div>
+          ))}
+        </div>
+      )}
+      {hasFootprint && (
+        <div className="space-y-1 text-xs" data-testid="simulation-footprint">
+          <span className="text-slate-500 uppercase tracking-widest font-bold text-[10px]">
+            Footprint
+          </span>
+          <div className="font-mono text-[10px] text-slate-400 break-all">
+            {truncateValue(simulation.footprint ?? '', 48)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

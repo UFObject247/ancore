@@ -4,12 +4,15 @@ import type {
   SendFormValues,
   FeeEstimate,
   TxStatus,
+  UiSimulationResult,
 } from '../hooks/useSendTransaction';
 import type { StellarClient } from '@ancore/stellar';
 import { sendMessage } from '../messaging';
 import { resolveRelayerUrl } from '../config/urls';
 import { Account, Asset, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 import { getErrorUserMessage } from '../errors/error-handler';
+import { simulateTransaction as simulateSorobanTransaction } from './simulation-service';
+import type { StellarNetwork } from '@ancore/wallet-shared';
 export interface ProductionSendServiceOptions {
   stellarClient: StellarClient;
   accountAddress: string;
@@ -130,6 +133,31 @@ export function createProductionSendService(options: ProductionSendServiceOption
       } catch {
         return 'pending'; // assume pending on network error
       }
+    },
+
+    async simulateTransaction(tx: SendTransactionDraft): Promise<UiSimulationResult> {
+      const unsignedXdr = await buildPaymentXdr(tx);
+      const result = await simulateSorobanTransaction(unsignedXdr, stellarClient.getNetwork() as StellarNetwork, {
+        client: stellarClient,
+      });
+
+      if (result.error) {
+        return {
+          fee: result.fee,
+          resourceLimits: result.resourceLimits,
+          authEntries: result.authEntries,
+          footprint: result.footprint,
+          error: result.error,
+        };
+      }
+
+      return {
+        fee: result.fee,
+        resourceLimits: result.resourceLimits,
+        authEntries: result.authEntries,
+        footprint: result.footprint,
+        outcome: 'success',
+      };
     },
   };
 }
