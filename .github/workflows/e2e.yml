@@ -47,6 +47,13 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: .
 
+      # Pre-build workspace library packages so Vite dev server can resolve imports.
+      # tests/playwright.config.ts only pre-builds ui-kit; account-abstraction,
+      # crypto, stellar, etc. also need dist/ to exist before pnpm dev starts.
+      - name: Build workspace library packages
+        run: pnpm turbo run build --filter=@ancore/types --filter=@ancore/crypto --filter=@ancore/stellar --filter=@ancore/core-sdk --filter=@ancore/ui-kit --filter=@ancore/account-abstraction --filter=@ancore/wallet-shared --filter=@ancore/wallet-api
+        working-directory: .
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
@@ -84,6 +91,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      - name: Build workspace library packages
+        run: pnpm turbo run build --filter=@ancore/types --filter=@ancore/crypto --filter=@ancore/stellar --filter=@ancore/core-sdk --filter=@ancore/ui-kit --filter=@ancore/account-abstraction --filter=@ancore/wallet-shared --filter=@ancore/wallet-api
         working-directory: .
 
       - name: Install Playwright browsers
