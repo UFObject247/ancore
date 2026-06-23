@@ -26,7 +26,6 @@ jobs:
   smoke:
     name: Smoke (PR / < 60 s)
     runs-on: ubuntu-latest
-    # Run on every PR; skip on nightly schedule (full job covers it)
     if: github.event_name != 'schedule'
     defaults:
       run:
@@ -48,15 +47,12 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: .
 
-      - name: Build workspace dependencies then extension
-        run: pnpm turbo run build --filter=@ancore/extension-wallet
-        working-directory: .
-
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: Run smoke specs (lock-unlock only)
-        run: pnpm exec playwright test tests/e2e/lock-unlock.spec.ts --project=chromium-extension
+      # tests/playwright.config.ts starts the Vite dev server internally via webServer
+      - name: Run smoke specs
+        run: pnpm test:e2e:smoke --project=chromium
         timeout-minutes: 3
 
       - name: Upload traces on failure
@@ -90,15 +86,12 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: .
 
-      - name: Build workspace dependencies then extension
-        run: pnpm turbo run build --filter=@ancore/extension-wallet
-        working-directory: .
-
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
+      # tests/playwright.config.ts starts the Vite dev server internally via webServer
       - name: Run full e2e suite
-        run: pnpm exec playwright test --project=chromium-extension
+        run: pnpm test:e2e --project=chromium
         timeout-minutes: 15
 
       - name: Upload report
