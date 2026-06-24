@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@ancore/core-sdk": "workspace:*",
+    "@ancore/crypto": "workspace:*",
+    "@ancore/types": "workspace:*",
     "@ancore/types": "workspace:*",
     "@reown/walletkit": "^1.5.5",
     "@walletconnect/types": "^2.23.9",
