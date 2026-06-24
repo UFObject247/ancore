@@ -54,6 +54,8 @@ pub enum ContractError {
     SessionKeyAlreadyExists = 14,
     /// Session key expiration is already in the past
     SessionKeyExpirationInPast = 15,
+    /// Arithmetic overflow occurred
+    ArithmeticOverflow = 16,
 }
 
 /// Event topic naming convention
@@ -136,11 +138,15 @@ const INSTANCE_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS; // 30 days
 const INSTANCE_BUMP_THRESHOLD: u32 = 15 * DAY_IN_LEDGERS; // 15 days
 const MIN_MILLISECONDS_TIMESTAMP: u64 = 100_000_000_000;
 
+/// Permission bit for send payment operations
+pub const PERMISSION_SEND_PAYMENT: u32 = 0;
 /// Permission bit for execute operations
 /// Permission bit for session-key execute authorization.
 /// Issue #188: Session keys must have this permission to invoke transactions.
 /// Without this bit set, execute() returns InsufficientPermission error.
 pub const PERMISSION_EXECUTE: u32 = 1;
+/// Permission bit for invoke contract operations
+pub const PERMISSION_INVOKE_CONTRACT: u32 = 2;
 
 #[contract]
 pub struct AncoreAccount;
@@ -291,9 +297,12 @@ impl AncoreAccount {
         }
 
         // Increment nonce before invocation (checks-effects-interactions)
+        let next_nonce = current_nonce
+            .checked_add(1)
+            .ok_or(ContractError::ArithmeticOverflow)?;
         env.storage()
             .instance()
-            .set(&DataKey::Nonce, &(current_nonce + 1));
+            .set(&DataKey::Nonce, &next_nonce);
 
         // Extend instance TTL to keep contract alive
         env.storage()
@@ -324,6 +333,21 @@ impl AncoreAccount {
 
         let owner = Self::get_owner(env.clone())?;
         owner.require_auth();
+
+        // Validate permission vector contains only valid/known permissions and no duplicates
+        let mut seen = Vec::new(&env);
+        for permission in permissions.iter() {
+            if permission != PERMISSION_SEND_PAYMENT
+                && permission != PERMISSION_EXECUTE
+                && permission != PERMISSION_INVOKE_CONTRACT
+            {
+                return Err(ContractError::InsufficientPermission);
+            }
+            if seen.contains(permission) {
+                return Err(ContractError::InsufficientPermission);
+            }
+            seen.push_back(permission);
+        }
 
         if env
             .storage()
@@ -409,9 +433,12 @@ impl AncoreAccount {
 
         // Increment version number
         let current_version = Self::get_version(env.clone());
+        let next_version = current_version
+            .checked_add(1)
+            .ok_or(ContractError::ArithmeticOverflow)?;
         env.storage()
             .instance()
-            .set(&DataKey::Version, &(current_version + 1));
+            .set(&DataKey::Version, &next_version);
 
         env.deployer()
             .update_current_contract_wasm(new_wasm_hash.clone());
@@ -527,7 +554,11 @@ impl AncoreAccount {
 
         let ledgers_to_live = if expires_at_secs > current_timestamp {
             // Using 4 seconds-per-ledger + 1 day buffer to guarantee it outlives expiry
-            ((expires_at_secs - current_timestamp) / 4) as u32 + DAY_IN_LEDGERS
+            let diff_seconds = expires_at_secs.saturating_sub(current_timestamp);
+            let calculated_ledgers = (diff_seconds / 4)
+                .try_into()
+                .unwrap_or(u32::MAX);
+            calculated_ledgers.saturating_add(DAY_IN_LEDGERS)
         } else {
             DAY_IN_LEDGERS // 1 day default buffer
         };
@@ -1331,5 +1362,48 @@ mod test {
             result.is_ok(),
             "re-upgrading to the already-deployed wasm hash is allowed as a no-op"
         );
+    }
+
+    #[test]
+    fn test_add_session_key_rejects_invalid_permissions() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AncoreAccount);
+        let client = AncoreAccountClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        init(&env, &client, &owner);
+        env.mock_all_auths();
+
+        let session_pk = BytesN::from_array(&env, &[1u8; 32]);
+        let expires_at = 1000u64;
+
+        // Permission value 3 is invalid (only 0, 1, 2 are valid)
+        let mut permissions = Vec::new(&env);
+        permissions.push_back(3);
+
+        let result = client.try_add_session_key(&session_pk, &expires_at, &permissions);
+        assert_eq!(result, Err(Ok(ContractError::InsufficientPermission)));
+    }
+
+    #[test]
+    fn test_add_session_key_rejects_duplicate_permissions() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AncoreAccount);
+        let client = AncoreAccountClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        init(&env, &client, &owner);
+        env.mock_all_auths();
+
+        let session_pk = BytesN::from_array(&env, &[1u8; 32]);
+        let expires_at = 1000u64;
+
+        // Duplicate permission execution (1)
+        let mut permissions = Vec::new(&env);
+        permissions.push_back(1);
+        permissions.push_back(1);
+
+        let result = client.try_add_session_key(&session_pk, &expires_at, &permissions);
+        assert_eq!(result, Err(Ok(ContractError::InsufficientPermission)));
     }
 }

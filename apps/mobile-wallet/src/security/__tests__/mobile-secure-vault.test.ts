@@ -1,22 +1,42 @@
+/**
+ * @jest-environment node
+ */
+
 import { webcrypto } from 'crypto';
 import { ChromeStorageAdapter, SecureStorageManager } from '@ancore/core-sdk';
 import { MemorySecureStoreAdapter } from '../../storage';
 import { MobileSecureVault } from '../mobile-secure-vault';
 
-if (!globalThis.crypto) {
-  Object.defineProperty(globalThis, 'crypto', {
-    value: webcrypto,
-    configurable: true,
-  });
-}
+export const mockAppStateListeners = new Set<(state: string) => void>();
 
-if (!globalThis.btoa) {
-  globalThis.btoa = (value: string) => Buffer.from(value, 'binary').toString('base64');
-}
+jest.mock(
+  'react-native',
+  () => ({
+    AppState: {
+      currentState: 'active',
+      addEventListener: jest.fn((event, callback) => {
+        if (event === 'change') {
+          mockAppStateListeners.add(callback);
+        }
+        return {
+          remove: jest.fn(() => {
+            mockAppStateListeners.delete(callback);
+          }),
+        };
+      }),
+    },
+  }),
+  { virtual: true }
+);
 
-if (!globalThis.atob) {
-  globalThis.atob = (value: string) => Buffer.from(value, 'base64').toString('binary');
-}
+Object.defineProperty(globalThis, 'crypto', {
+  value: webcrypto,
+  configurable: true,
+  writable: true,
+});
+
+globalThis.btoa = (value: string) => Buffer.from(value, 'binary').toString('base64');
+globalThis.atob = (value: string) => Buffer.from(value, 'base64').toString('binary');
 
 interface MockChromeArea {
   get: (key: string, cb: (result: Record<string, unknown>) => void) => void;
@@ -173,5 +193,31 @@ describe('MobileSecureVault', () => {
 
     await expect(mobileManager.unlock(password)).resolves.toBe(true);
     await expect(mobileManager.getAccount()).resolves.toEqual(account);
+  });
+
+  it('locks the secure vault when the app goes to the background', async () => {
+    mockAppStateListeners.clear();
+    const storage = new MemorySecureStoreAdapter();
+    const vault = new MobileSecureVault(storage);
+
+    // Initial state: locked
+    expect(vault.isUnlocked).toBe(false);
+
+    // Unlock vault
+    await expect(vault.unlock(password)).resolves.toBe(true);
+    expect(vault.isUnlocked).toBe(true);
+
+    // Trigger app state change to inactive / background
+    expect(mockAppStateListeners.size).toBe(1);
+    const [listener] = Array.from(mockAppStateListeners);
+
+    listener('background');
+
+    // Should be locked now
+    expect(vault.isUnlocked).toBe(false);
+
+    // Clean up
+    vault.dispose();
+    expect(mockAppStateListeners.size).toBe(0);
   });
 });

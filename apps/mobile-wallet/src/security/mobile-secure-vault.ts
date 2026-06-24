@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { SecureStorageManager } from '@ancore/core-sdk';
 import {
   AccountMetadata,
@@ -34,12 +35,22 @@ export interface StoredAccount {
 export class MobileSecureVault {
   private readonly storageManager: SecureStorageManager;
   private readonly now: () => number;
+  private readonly appStateSubscription?: { remove: () => void };
 
   constructor(storage: SecureStoreAdapter, options: MobileVaultOptions = {}) {
     this.storageManager = new SecureStorageManager(storage, {
       autoLockMs: options.lockTimeoutMs,
     });
     this.now = options.now ?? (() => Date.now());
+
+    // Lock secure vault when app goes to background
+    if (typeof AppState !== 'undefined' && typeof AppState.addEventListener === 'function') {
+      this.appStateSubscription = AppState.addEventListener('change', (state) => {
+        if (state !== 'active') {
+          this.lock();
+        }
+      });
+    }
   }
 
   get isUnlocked(): boolean {
@@ -56,6 +67,12 @@ export class MobileSecureVault {
 
   touch(): void {
     this.storageManager.touch();
+  }
+
+  dispose(): void {
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+    }
   }
 
   async persistAccount(input: PersistAccountInput): Promise<AccountMetadata> {
@@ -115,8 +132,9 @@ export class MobileSecureVault {
 
   private async loadAccountRecords(): Promise<Record<string, PersistedAccountRecord>> {
     return (
-      (await this.storageManager.getItem<Record<string, PersistedAccountRecord>>(VAULT_ACCOUNTS_KEY)) ??
-      {}
+      (await this.storageManager.getItem<Record<string, PersistedAccountRecord>>(
+        VAULT_ACCOUNTS_KEY
+      )) ?? {}
     );
   }
 }

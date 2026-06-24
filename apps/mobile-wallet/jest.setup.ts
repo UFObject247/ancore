@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
+
+globalThis.TextEncoder = TextEncoder;
+globalThis.TextDecoder = TextDecoder as typeof globalThis.TextDecoder;
 
 // `react-native-keychain` is a native module that is not installed in this
 // standalone library package (it arrives with the host app, #780). Register a
