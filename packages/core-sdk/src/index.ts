@@ -90,6 +90,23 @@ export {
   getRetryPreset,
 } from './retry-presets';
 
+// Account sequence fetch helper — re-exported from @ancore/stellar for SDK consumers.
+// Use fetchAccountSequence to retrieve a Stellar account's current sequence number
+// before building transactions in the send flow.
+//
+// Example:
+//   import { fetchAccountSequence } from '@ancore/core-sdk';
+//   const { sequence } = await fetchAccountSequence(horizonServer, publicKey, {
+//     maxRetries: 3,
+//     cacheTtlMs: 5_000,
+//   });
+export {
+  fetchAccountSequence,
+  clearSequenceCache,
+  type AccountSequenceResult,
+  type FetchAccountSequenceOptions,
+} from '@ancore/stellar';
+
 // Scheduled transfers
 export {
   HttpSchedulerClient,
