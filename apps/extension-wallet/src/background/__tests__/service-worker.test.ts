@@ -51,7 +51,7 @@ interface ChromeMock {
 // ---------------------------------------------------------------------------
 
 function buildChromeMock(): ChromeMock {
-  let capturedListener: OnMessageListener | null = null;
+  const capturedListeners: OnMessageListener[] = [];
   const sessionStore: Record<string, unknown> = {};
 
   const mock: ChromeMock = {
@@ -61,11 +61,14 @@ function buildChromeMock(): ChromeMock {
       onStartup: { addListener: vi.fn() },
       onMessage: {
         addListener: vi.fn((fn: OnMessageListener) => {
-          capturedListener = fn;
+          capturedListeners.push(fn);
         }),
         _trigger(msg, sender, respond) {
-          if (!capturedListener) throw new Error('No onMessage listener installed');
-          capturedListener(msg, sender, respond);
+          if (capturedListeners.length === 0) throw new Error('No onMessage listener installed');
+          for (const listener of capturedListeners) {
+            const result = listener(msg, sender, respond);
+            if (result === true) break;
+          }
         },
       },
     },
