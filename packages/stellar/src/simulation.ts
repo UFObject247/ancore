@@ -8,8 +8,6 @@ import type { Transaction } from '@stellar/stellar-sdk';
 export interface SorobanResourceLimits {
   cpuInsn: number;
   memBytes: number;
-  diskReadBytes?: number;
-  diskWriteBytes?: number;
   minResourceFee?: string;
 }
 
@@ -72,25 +70,12 @@ function classicSimulationResult(transaction: Transaction): ParsedSimulationResu
 function extractAuthEntries(
   response: rpc.Api.SimulateTransactionSuccessResponse
 ): string[] {
-  const txData = response.transactionData;
-  if (!txData) {
+  // In stellar-sdk v13+, auth entries live on each result, not on transactionData
+  const results = response.results;
+  if (!results || results.length === 0) {
     return [];
   }
-
-  try {
-    const auth = txData.sorobanAuthorization();
-    if (!auth) {
-      return [];
-    }
-
-    const entries: string[] = [];
-    for (let index = 0; index < auth.length(); index += 1) {
-      entries.push(auth.get(index).toXDR('base64'));
-    }
-    return entries;
-  } catch {
-    return [];
-  }
+  return results.flatMap((r) => r.auth ?? []);
 }
 
 function extractFootprint(response: rpc.Api.SimulateTransactionSuccessResponse): string {
@@ -100,7 +85,8 @@ function extractFootprint(response: rpc.Api.SimulateTransactionSuccessResponse):
   }
 
   try {
-    return txData.footprint().toXDR('base64');
+    // build() returns the XDR SorobanTransactionData; serialize the whole thing
+    return txData.build().toXDR('base64');
   } catch {
     return '';
   }
@@ -109,19 +95,22 @@ function extractFootprint(response: rpc.Api.SimulateTransactionSuccessResponse):
 function parseResourceLimits(
   response: rpc.Api.SimulateTransactionSuccessResponse
 ): SorobanResourceLimits {
-  const cost = response.cost;
-
-  return {
-    cpuInsn: Number.parseInt(cost?.cpuInsns ?? '0', 10),
-    memBytes: Number.parseInt(cost?.memBytes ?? '0', 10),
-    diskReadBytes: cost?.diskReadBytes
-      ? Number.parseInt(cost.diskReadBytes, 10)
-      : undefined,
-    diskWriteBytes: cost?.diskWriteBytes
-      ? Number.parseInt(cost.diskWriteBytes, 10)
-      : undefined,
-    minResourceFee: response.minResourceFee,
-  };
+  // stellar-sdk v13 removed the top-level `cost` field; resource counts live
+  // inside the transaction data's resources XDR object
+  try {
+    const resources = response.transactionData.build().resources();
+    return {
+      cpuInsn: Number(resources.instructions()),
+      memBytes: Number(resources.readBytes()) + Number(resources.writeBytes()),
+      minResourceFee: response.minResourceFee,
+    };
+  } catch {
+    return {
+      cpuInsn: 0,
+      memBytes: 0,
+      minResourceFee: response.minResourceFee,
+    };
+  }
 }
 
 function simulationErrorMessage(response: rpc.Api.SimulateTransactionErrorResponse): string {
