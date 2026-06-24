@@ -71,17 +71,24 @@ describe('parseSimulationResponse', () => {
     jest.spyOn(rpc.Api, 'isSimulationRestore').mockReturnValue(false);
     jest.spyOn(rpc.Api, 'isSimulationSuccess').mockReturnValue(true);
 
-    const response: rpc.Api.SimulateTransactionSuccessResponse = {
+    const mockTransactionData = {
+      build: () => ({
+        resources: () => ({
+          instructions: () => 12000,
+          readBytes: () => 1024,
+          writeBytes: () => 1024,
+        }),
+        toXDR: () => 'mock-footprint-xdr',
+      }),
+    };
+
+    const response = {
       id: 'sim-ok',
       latestLedger: 100,
       minResourceFee: '5000',
-      results: [],
-      cost: {
-        cpuInsns: '12000',
-        memBytes: '2048',
-      },
-      transactionData: undefined,
-    };
+      result: { auth: [] },
+      transactionData: mockTransactionData,
+    } as unknown as rpc.Api.SimulateTransactionSuccessResponse;
 
     const result = parseSimulationResponse(response, fixtureXdr, Networks.TESTNET);
 
@@ -91,17 +98,13 @@ describe('parseSimulationResponse', () => {
     expect(result.resourceLimits.memBytes).toBe(2048);
     expect(result.resourceLimits.minResourceFee).toBe('5000');
     expect(result.authEntries).toEqual([]);
-    expect(result.footprint).toBe('');
+    expect(result.footprint).toBe('mock-footprint-xdr');
   });
 
   it('estimates classic payment fees without calling Soroban RPC', async () => {
     const rpcSimulate = jest.fn();
 
-    const result = await simulateUnsignedTransaction(
-      fixtureXdr,
-      Networks.TESTNET,
-      rpcSimulate
-    );
+    const result = await simulateUnsignedTransaction(fixtureXdr, Networks.TESTNET, rpcSimulate);
 
     expect(result.error).toBeUndefined();
     expect(result.fee).toBe('0.0000100');
