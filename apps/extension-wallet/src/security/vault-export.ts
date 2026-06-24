@@ -1,7 +1,7 @@
 import { decryptSecretKey, type EncryptedSecretKeyPayload } from '@ancore/crypto';
 import {
+  ChromeStorageAdapter,
   SecureStorageManager,
-  createStorageAdapter,
   type AccountData,
   type StorageAdapter,
 } from '@ancore/core-sdk';
@@ -39,7 +39,7 @@ export async function verifyVaultPassword(
   password: string,
   options?: { storage?: StorageAdapter }
 ): Promise<boolean> {
-  const verifier = new SecureStorageManager(options?.storage ?? createStorageAdapter());
+  const verifier = new SecureStorageManager(options?.storage ?? new ChromeStorageAdapter());
   const unlocked = await verifier.unlock(password);
   verifier.lock();
   return unlocked;

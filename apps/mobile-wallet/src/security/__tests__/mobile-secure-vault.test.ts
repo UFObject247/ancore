@@ -1,4 +1,5 @@
 import { webcrypto } from 'crypto';
+import { ChromeStorageAdapter, SecureStorageManager } from '@ancore/core-sdk';
 import { MemorySecureStoreAdapter } from '../../storage';
 import { MobileSecureVault } from '../mobile-secure-vault';
 
@@ -17,10 +18,48 @@ if (!globalThis.atob) {
   globalThis.atob = (value: string) => Buffer.from(value, 'base64').toString('binary');
 }
 
+interface MockChromeArea {
+  get: (key: string, cb: (result: Record<string, unknown>) => void) => void;
+  set: (items: Record<string, unknown>, cb: () => void) => void;
+  remove: (key: string, cb: () => void) => void;
+  getBytesInUse: (_: null, cb: (bytes: number) => void) => void;
+  QUOTA_BYTES: number;
+}
+
+function createMockChromeStorage(): {
+  area: MockChromeArea;
+  getRawStore: () => Record<string, unknown>;
+} {
+  const store: Record<string, unknown> = {};
+
+  const area: MockChromeArea = {
+    get: (key, cb) => cb({ [key]: store[key] }),
+    set: (items, cb) => {
+      Object.assign(store, items);
+      cb();
+    },
+    remove: (key, cb) => {
+      delete store[key];
+      cb();
+    },
+    getBytesInUse: (_unused, cb) => cb(0),
+    QUOTA_BYTES: 5_242_880,
+  };
+
+  (globalThis as typeof globalThis & { chrome?: unknown }).chrome = {
+    runtime: { lastError: undefined },
+  };
+
+  return {
+    area,
+    getRawStore: () => store,
+  };
+}
+
 describe('MobileSecureVault', () => {
   const password = 'correct horse battery staple';
 
-  it('persists account metadata and encrypted key material after unlock', async () => {
+  it('persists account metadata and encrypted key material through SecureStorageManager', async () => {
     const storage = new MemorySecureStoreAdapter();
     const vault = new MobileSecureVault(storage, {
       now: () => Date.parse('2026-04-23T12:00:00.000Z'),
@@ -47,13 +86,11 @@ describe('MobileSecureVault', () => {
       updatedAt: '2026-04-23T12:00:00.000Z',
     });
 
-    const persistedRecords =
-      await storage.get<Record<string, { encryptedSecret: { data: string } }>>(
-        'mobile_vault_accounts'
-      );
+    const persistedRecords = await storage.get('mobile_vault_accounts');
 
-    expect(JSON.stringify(persistedRecords)).not.toContain('SSECRET1234');
-    expect(JSON.stringify(persistedRecords)).not.toContain('memo-seed');
+    expect(persistedRecords).not.toBeNull();
+    expect(persistedRecords).not.toContain('SSECRET1234');
+    expect(persistedRecords).not.toContain('memo-seed');
     expect(await vault.listAccountMetadata()).toEqual([metadata]);
     expect(await vault.loadAccount('primary')).toEqual({
       metadata,
@@ -84,7 +121,7 @@ describe('MobileSecureVault', () => {
 
     await expect(secondVault.unlock('wrong password')).resolves.toBe(false);
     expect(secondVault.isUnlocked).toBe(false);
-    await expect(secondVault.loadAccount('primary')).rejects.toThrow('Vault is locked');
+    await expect(secondVault.loadAccount('primary')).rejects.toThrow('Storage manager is locked');
   });
 
   it('locks after the inactivity timeout elapses', async () => {
@@ -107,32 +144,34 @@ describe('MobileSecureVault', () => {
           keyMaterial: 'SSECRET1234',
           accountPayload: {},
         })
-      ).rejects.toThrow('Vault is locked');
+      ).rejects.toThrow('Storage manager is locked');
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('clears persisted vault state and encrypted account data', async () => {
-    const storage = new MemorySecureStoreAdapter();
-    const vault = new MobileSecureVault(storage);
+  it('round-trips encrypted payloads between extension and mobile adapters', async () => {
+    const chromeStorage = createMockChromeStorage();
+    const extensionManager = new SecureStorageManager(
+      new ChromeStorageAdapter(chromeStorage.area as never)
+    );
+    const mobileStorage = new MemorySecureStoreAdapter();
+    const mobileManager = new SecureStorageManager(mobileStorage);
+    const account = {
+      privateKey: 'SSECRET1234',
+      publicKey: 'GABC1234',
+    };
 
-    await vault.unlock(password);
-    await vault.persistAccount({
-      id: 'primary',
-      address: 'GABC1234',
-      keyMaterial: 'SSECRET1234',
-      accountPayload: { network: 'testnet' },
-    });
+    await expect(extensionManager.unlock(password)).resolves.toBe(true);
+    await extensionManager.saveAccount(account);
 
-    await vault.clearData();
+    for (const [key, value] of Object.entries(chromeStorage.getRawStore())) {
+      await mobileStorage.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
 
-    expect(vault.isUnlocked).toBe(false);
-    await expect(storage.get('mobile_vault_state')).resolves.toBeNull();
-    await expect(storage.get('mobile_vault_accounts')).resolves.toBeNull();
+    extensionManager.lock();
 
-    const reinitializedVault = new MobileSecureVault(storage);
-    await expect(reinitializedVault.unlock('new password')).resolves.toBe(true);
-    await expect(reinitializedVault.listAccountMetadata()).resolves.toEqual([]);
+    await expect(mobileManager.unlock(password)).resolves.toBe(true);
+    await expect(mobileManager.getAccount()).resolves.toEqual(account);
   });
 });

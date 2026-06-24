@@ -1,10 +1,15 @@
 import {
   AccountData,
   EncryptedPayload,
+  PlatformStorageAdapter,
   RecentRecipientsData,
   SessionKeysData,
   StorageAdapter,
 } from './types';
+
+const MASTER_SALT_STORAGE_KEY = 'master_salt';
+const VERIFICATION_PAYLOAD_STORAGE_KEY = 'verification_payload';
+const DEFAULT_DATA_KEYS = ['account', 'sessionKeys', 'recentRecipients'] as const;
 
 function toArrayBufferView(value: Uint8Array): Uint8Array<ArrayBuffer> {
   const normalized = new Uint8Array(new ArrayBuffer(value.byteLength));
@@ -35,18 +40,79 @@ function base64ToBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+function isLegacyStorageAdapter(
+  storage: PlatformStorageAdapter | StorageAdapter
+): storage is StorageAdapter {
+  return typeof (storage as StorageAdapter).remove === 'function';
+}
+
+function normalizeStorageAdapter(
+  storage: PlatformStorageAdapter | StorageAdapter
+): PlatformStorageAdapter {
+  if (!isLegacyStorageAdapter(storage)) {
+    return storage;
+  }
+
+  return {
+    get: async (key) => {
+      const value = await storage.get(key);
+      if (value == null) {
+        return null;
+      }
+      return typeof value === 'string' ? value : JSON.stringify(value);
+    },
+    set: async (key, value) => {
+      try {
+        await storage.set(key, JSON.parse(value));
+      } catch {
+        await storage.set(key, value);
+      }
+    },
+    delete: (key) => storage.remove(key),
+  };
+}
+
+function isEncryptedPayload(value: unknown): value is EncryptedPayload {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.salt === 'string' &&
+    typeof payload.iv === 'string' &&
+    typeof payload.data === 'string'
+  );
+}
+
+function parseEncryptedPayload(serialized: string | null): EncryptedPayload | null {
+  if (!serialized) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(serialized) as unknown;
+    return isEncryptedPayload(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface SecureStorageManagerOptions {
   autoLockMs?: number;
 }
 
 export class SecureStorageManager {
   private encryptionKey: CryptoKey | null = null;
-  private storage: StorageAdapter;
+  private readonly storage: PlatformStorageAdapter;
   private readonly autoLockMs: number | null;
   private autoLockTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
-  constructor(storage: StorageAdapter, options: SecureStorageManagerOptions = {}) {
-    this.storage = storage;
+  constructor(
+    storage: PlatformStorageAdapter | StorageAdapter,
+    options: SecureStorageManagerOptions = {}
+  ) {
+    this.storage = normalizeStorageAdapter(storage);
     this.autoLockMs =
       options.autoLockMs != null && options.autoLockMs > 0 ? options.autoLockMs : null;
   }
@@ -77,7 +143,7 @@ export class SecureStorageManager {
 
       // Store verification payload first, then persist salt last (atomic ordering)
       await this.createVerificationPayload();
-      await this.storage.set('master_salt', bufferToBase64(masterSalt));
+      await this.storage.set(MASTER_SALT_STORAGE_KEY, bufferToBase64(masterSalt));
 
       this.touch();
       return true;
@@ -136,7 +202,7 @@ export class SecureStorageManager {
    * @returns The master salt as a Uint8Array, or null if it doesn't exist
    */
   private async loadMasterSalt(): Promise<Uint8Array | null> {
-    const base64Salt = await this.storage.get('master_salt');
+    const base64Salt = await this.storage.get(MASTER_SALT_STORAGE_KEY);
 
     if (base64Salt == null) return null; // genuinely not initialized
 
@@ -202,7 +268,7 @@ export class SecureStorageManager {
     };
 
     const payload = await this.encryptData(JSON.stringify(verificationContent));
-    await this.storage.set('verification_payload', payload);
+    await this.storage.set(VERIFICATION_PAYLOAD_STORAGE_KEY, JSON.stringify(payload));
   }
 
   /**
@@ -210,7 +276,7 @@ export class SecureStorageManager {
    * @returns true if decryption succeeds, false if it fails
    */
   private async verifyPassword(): Promise<boolean> {
-    const payload = (await this.storage.get('verification_payload')) as EncryptedPayload | null;
+    const payload = await this.readEncryptedPayload(VERIFICATION_PAYLOAD_STORAGE_KEY);
     if (!payload) {
       return false;
     }
@@ -281,78 +347,78 @@ export class SecureStorageManager {
   }
 
   public async saveAccount(account: AccountData): Promise<void> {
-    const payload = await this.encryptData(JSON.stringify(account));
-    await this.storage.set('account', payload);
-    this.touch();
+    await this.saveItem('account', account);
   }
 
   public async getAccount(): Promise<AccountData | null> {
-    if (!this.encryptionKey) {
-      throw new Error('Storage manager is locked');
+    return this.getItem<AccountData>('account');
+  }
+
+  public async saveSessionKeys(sessionKeys: SessionKeysData): Promise<void> {
+    await this.saveItem('sessionKeys', sessionKeys);
+  }
+
+  public async getSessionKeys(): Promise<SessionKeysData | null> {
+    return (await this.getItem<SessionKeysData>('sessionKeys')) ?? { keys: {} };
+  }
+
+  public async saveRecentRecipients(data: RecentRecipientsData): Promise<void> {
+    await this.saveItem('recentRecipients', data);
+  }
+
+  public async getRecentRecipients(): Promise<RecentRecipientsData | null> {
+    return (await this.getItem<RecentRecipientsData>('recentRecipients')) ?? { recipients: [] };
+  }
+
+  public async saveItem(key: string, value: unknown): Promise<void> {
+    this.assertUnlocked();
+
+    const payload = await this.encryptData(JSON.stringify(value));
+    await this.storage.set(key, JSON.stringify(payload));
+    this.touch();
+  }
+
+  public async getItem<T>(key: string): Promise<T | null> {
+    this.assertUnlocked();
+
+    const payload = await this.readEncryptedPayload(key);
+    if (!payload) {
+      return null;
     }
-    const payload = await this.storage.get<EncryptedPayload>('account');
-    if (!payload) return null;
+
     try {
       const json = await this.decryptData(payload);
       this.touch();
-      return JSON.parse(json);
+      return JSON.parse(json) as T;
     } catch {
-      // Data corrupted or password changed out of sync
       return null;
     }
   }
 
-  public async saveSessionKeys(sessionKeys: SessionKeysData): Promise<void> {
-    if (!this.encryptionKey) {
-      throw new Error('Storage manager is locked');
-    }
-    const payload = await this.encryptData(JSON.stringify(sessionKeys));
-    await this.storage.set('sessionKeys', payload);
-    this.touch();
+  public async deleteItem(key: string): Promise<void> {
+    await this.storage.delete(key);
   }
 
-  public async getSessionKeys(): Promise<SessionKeysData | null> {
-    if (!this.encryptionKey) {
-      throw new Error('Storage manager is locked');
-    }
-    const payload = await this.storage.get<EncryptedPayload>('sessionKeys');
-    if (!payload) {
-      return { keys: {} };
-    }
-    try {
-      const json = await this.decryptData(payload);
-      this.touch();
-      return JSON.parse(json);
-    } catch {
-      // Data corrupted
-      return { keys: {} };
-    }
+  public async reset(additionalKeys: string[] = []): Promise<void> {
+    const keys = new Set<string>([
+      MASTER_SALT_STORAGE_KEY,
+      VERIFICATION_PAYLOAD_STORAGE_KEY,
+      ...DEFAULT_DATA_KEYS,
+      ...additionalKeys,
+    ]);
+
+    await Promise.all([...keys].map((key) => this.storage.delete(key)));
+    this.lock();
   }
 
-  public async saveRecentRecipients(data: RecentRecipientsData): Promise<void> {
-    if (!this.encryptionKey) {
-      throw new Error('Storage manager is locked');
-    }
-    const payload = await this.encryptData(JSON.stringify(data));
-    await this.storage.set('recentRecipients', payload);
-    this.touch();
+  private async readEncryptedPayload(key: string): Promise<EncryptedPayload | null> {
+    const serialized = await this.storage.get(key);
+    return parseEncryptedPayload(serialized);
   }
 
-  public async getRecentRecipients(): Promise<RecentRecipientsData | null> {
+  private assertUnlocked(): void {
     if (!this.encryptionKey) {
       throw new Error('Storage manager is locked');
-    }
-    const payload = await this.storage.get<EncryptedPayload>('recentRecipients');
-    if (!payload) {
-      return { recipients: [] };
-    }
-    try {
-      const json = await this.decryptData(payload);
-      this.touch();
-      return JSON.parse(json);
-    } catch {
-      // Data corrupted
-      return { recipients: [] };
     }
   }
 }

@@ -20,4 +20,7 @@ module.exports = {
   coverageDirectory: 'coverage',
   testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   testPathIgnorePatterns: ['/node_modules/'],
+  moduleNameMapper: {
+    '^@ancore/(.+)$': '<rootDir>/../../packages/$1/src',
+  },
 };

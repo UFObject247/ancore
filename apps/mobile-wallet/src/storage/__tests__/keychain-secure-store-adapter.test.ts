@@ -69,7 +69,7 @@ describe('KeychainSecureStoreAdapter', () => {
 
     expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith(
       KEYCHAIN_USERNAME,
-      JSON.stringify('encrypted_data'),
+      'encrypted_data',
       { service: 'org.ancore.wallet.vault_key' }
     );
   });
@@ -85,15 +85,11 @@ describe('KeychainSecureStoreAdapter', () => {
     });
   });
 
-  it('round-trips structured vault state through JSON serialization', async () => {
+  it('round-trips raw encrypted payload strings through Keychain', async () => {
     installKeychainFake();
 
     const adapter = new KeychainSecureStoreAdapter({ bundleId: PROD_BUNDLE_ID });
-    const vaultState = {
-      version: 1 as const,
-      masterSalt: 'c2FsdA==',
-      verification: { iv: 'aXY=', salt: 'c2FsdA==', data: 'ZGF0YQ==' },
-    };
+    const vaultState = '{"salt":"c2FsdA==","iv":"aXY=","data":"ZGF0YQ=="}';
 
     await adapter.set('mobile_vault_state', vaultState);
 
@@ -150,7 +146,7 @@ describe('KeychainSecureStoreAdapter', () => {
 
     expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith(
       KEYCHAIN_USERNAME,
-      JSON.stringify('v'),
+      'v',
       { service: 'org.ancore.wallet.dev.k' }
     );
   });
@@ -163,7 +159,7 @@ describe('KeychainSecureStoreAdapter', () => {
 
     expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith(
       KEYCHAIN_USERNAME,
-      JSON.stringify('v'),
+      'v',
       { service: `${PROD_BUNDLE_ID}.k` }
     );
   });
@@ -178,7 +174,7 @@ describe('KeychainSecureStoreAdapter', () => {
 
       expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith(
         KEYCHAIN_USERNAME,
-        JSON.stringify('v'),
+        'v',
         { service: `${DEV_BUNDLE_ID}.k` }
       );
     } finally {

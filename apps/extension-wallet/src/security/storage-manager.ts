@@ -1,4 +1,4 @@
-import { SecureStorageManager, createStorageAdapter, type StorageAdapter } from '@ancore/core-sdk';
+import { ChromeStorageAdapter, SecureStorageManager, type StorageAdapter } from '@ancore/core-sdk';
 
 type StorageManagerInstance = InstanceType<typeof SecureStorageManager>;
 
@@ -7,7 +7,7 @@ let _storageManager: StorageManagerInstance | null = null;
 /** Shared SecureStorageManager instance for lock/unlock and vault export flows. */
 export function getSharedStorageManager(): StorageManagerInstance {
   if (!_storageManager) {
-    _storageManager = new SecureStorageManager(createStorageAdapter());
+    _storageManager = new SecureStorageManager(new ChromeStorageAdapter());
   }
   return _storageManager;
 }

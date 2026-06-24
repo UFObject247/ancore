@@ -47,8 +47,8 @@ export interface KeychainSecureStoreAdapterOptions {
  *
  * Secrets persisted here survive app cold starts (unlike
  * {@link MemorySecureStoreAdapter}) and are stored in the iOS Keychain /
- * Android Keystore. Values are JSON-serialized because the secure store holds
- * structured vault state, while Keychain only stores strings.
+ * Android Keystore. The unified vault stores already-serialized encrypted
+ * payloads here as strings.
  *
  * **Storage rule:** mnemonics, key material, and the encrypted vault blobs go
  * here — never in AsyncStorage. Only non-sensitive metadata/preferences belong
@@ -61,27 +61,31 @@ export class KeychainSecureStoreAdapter implements SecureStoreAdapter {
     this.bundleId = options.bundleId ?? resolveDefaultBundleId();
   }
 
-  async get<T>(key: string): Promise<T | null> {
+  async get(key: string): Promise<string | null> {
     const result = await Keychain.getGenericPassword({ service: this.serviceFor(key) });
 
     if (!result) {
       return null;
     }
 
-    return JSON.parse(result.password) as T;
+    return result.password;
   }
 
-  async set<T>(key: string, value: T): Promise<void> {
-    await Keychain.setGenericPassword(KEYCHAIN_USERNAME, JSON.stringify(value), {
+  async set(key: string, value: string): Promise<void> {
+    await Keychain.setGenericPassword(KEYCHAIN_USERNAME, value, {
       service: this.serviceFor(key),
     });
 
     await this.indexAdd(key);
   }
 
-  async remove(key: string): Promise<void> {
+  async delete(key: string): Promise<void> {
     await Keychain.resetGenericPassword({ service: this.serviceFor(key) });
     await this.indexRemove(key);
+  }
+
+  async remove(key: string): Promise<void> {
+    await this.delete(key);
   }
 
   async clear(): Promise<void> {

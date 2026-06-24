@@ -40,7 +40,7 @@ describe('createSecureStoreAdapter', () => {
 
     expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
       'ancore',
-      JSON.stringify('encrypted_data'),
+      'encrypted_data',
       { service: 'org.ancore.wallet.vault_key' }
     );
   });

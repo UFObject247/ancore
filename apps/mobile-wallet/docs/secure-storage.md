@@ -16,11 +16,12 @@ lives in is a security boundary, not a preference.**
 > AsyncStorage. Seeds and key material live in the Keychain only — this mirrors
 > Freighter Mobile's `storageFactory` Secure/Data tier split.
 
-Concretely, everything written through `SecureStoreAdapter` (e.g.
-`mobile_vault_state`, `mobile_vault_accounts` from `MobileSecureVault`) belongs
-in the Keychain. AsyncStorage may only hold values that would be harmless if read
-off a compromised device — display labels, the selected network name, feature
-flags. When in doubt, put it in the secure tier.
+Concretely, everything written through `SecureStoreAdapter` belongs in the
+Keychain. Today that means the unified `SecureStorageManager` metadata keys
+(`master_salt`, `verification_payload`) plus any encrypted account/session
+payloads. AsyncStorage may only hold values that would be harmless if read off a
+compromised device — display labels, the selected network name, feature flags.
+When in doubt, put it in the secure tier.
 
 ## Adapters
 
@@ -34,10 +35,11 @@ Select the right one with the factory — it returns the memory adapter under Je
 otherwise:
 
 ```typescript
-import { createSecureStoreAdapter, MobileSecureVault } from '@ancore/mobile-wallet';
+import { SecureStorageManager } from '@ancore/core-sdk';
+import { createSecureStoreAdapter } from '@ancore/mobile-wallet';
 
 const store = createSecureStoreAdapter();
-const vault = new MobileSecureVault(store);
+const vault = new SecureStorageManager(store);
 ```
 
 ### Keychain service scoping
@@ -55,8 +57,8 @@ entries" primitive, the adapter maintains a small `__keys__` index entry so
 
 ### Serialization
 
-`SecureStoreAdapter` stores structured objects, while Keychain stores strings, so
-the Keychain adapter JSON-serializes values on write and parses them on read.
+`SecureStoreAdapter` stores the unified vault's raw encrypted payload strings, so
+the adapter writes those strings directly to Keychain.
 
 ## Device validation (requires host app #780)
 
