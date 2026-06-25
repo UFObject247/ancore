@@ -319,4 +319,53 @@ describe('POST /relay/execute — idempotency-key header', () => {
     expect(v3.body.valid).toBe(false);
     expect(v3.body.error.code).toBe('NONCE_REPLAY');
   });
+
+  describe('BearerAuthService integration via RELAYER_AUTH_SECRET', () => {
+    let originalSecret: string | undefined;
+
+    beforeAll(() => {
+      originalSecret = process.env.RELAYER_AUTH_SECRET;
+      process.env.RELAYER_AUTH_SECRET = 'integration-secret';
+    });
+
+    afterAll(() => {
+      if (originalSecret === undefined) {
+        delete process.env.RELAYER_AUTH_SECRET;
+      } else {
+        process.env.RELAYER_AUTH_SECRET = originalSecret;
+      }
+    });
+
+    it('denies access with 401 when invalid token is supplied', async () => {
+      const mockSigService: SignatureServiceContract = {
+        verify: jest.fn().mockReturnValue(true),
+      };
+      const app = createApp(undefined, mockSigService, undefined, undefined, {
+        useMockSubmission: true,
+      });
+      const res = await request(app)
+        .post('/relay/execute')
+        .set('Authorization', 'Bearer wrong-secret')
+        .send(validBody);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('UNAUTHORIZED');
+    });
+
+    it('grants access with 200 when correct token is supplied', async () => {
+      const mockSigService: SignatureServiceContract = {
+        verify: jest.fn().mockReturnValue(true),
+      };
+      const app = createApp(undefined, mockSigService, undefined, undefined, {
+        useMockSubmission: true,
+      });
+      const res = await request(app)
+        .post('/relay/execute')
+        .set('Authorization', 'Bearer integration-secret')
+        .send({ ...validBody, nonce: 3 }); // Use a unique nonce to avoid replay rejection
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+  });
 });
