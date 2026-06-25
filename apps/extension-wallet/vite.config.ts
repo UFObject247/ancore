@@ -56,6 +56,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@ancore/core-sdk': path.resolve(__dirname, '../../packages/core-sdk/src/index.ts'),
       '@ancore/types': path.resolve(__dirname, '../../packages/types/src/index.ts'),
+      '@ancore/wallet-shared': path.resolve(__dirname, '../../packages/wallet-shared/src/index.ts'),
     },
   },
   css: {
@@ -68,11 +69,16 @@ export default defineConfig({
       input: {
         'popup/index': path.resolve(__dirname, 'src/popup/index.html'),
         background: path.resolve(__dirname, 'src/background/service-worker.ts'),
+        'content-script/content-script': path.resolve(__dirname, 'src/content-script/index.ts'),
+        'sidepanel/index': path.resolve(__dirname, 'src/sidepanel/index.html'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'background') {
             return 'background/service-worker.js';
+          }
+          if (chunkInfo.name === 'content-script/content-script') {
+            return 'content-script/content-script.js';
           }
           return 'assets/[name]-[hash].js';
         },

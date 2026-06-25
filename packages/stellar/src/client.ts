@@ -2,8 +2,9 @@
  * StellarClient - Network client for Stellar blockchain interactions
  */
 
-import { rpc as StellarRpc, Horizon } from '@stellar/stellar-sdk';
+import { rpc as StellarRpc, Horizon, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { Transaction } from '@stellar/stellar-sdk';
+import { simulateUnsignedTransaction, type ParsedSimulationResult } from './simulation';
 import type { Network, NetworkConfig } from '@ancore/types';
 import {
   StellarError,
@@ -13,6 +14,9 @@ import {
   RetryExhaustedError,
 } from './errors';
 import { withRetry, resolveRetryOptions, type RetryOptions, type RetryPresetName } from './retry';
+
+/** Supported Stellar network identifiers for client factory creation. */
+export type NetworkId = Network;
 
 const NETWORK_CONFIG: Record<
   Network,
@@ -28,12 +32,33 @@ const NETWORK_CONFIG: Record<
     horizonUrl: 'https://horizon.stellar.org',
     networkPassphrase: 'Public Global Stellar Network ; September 2015',
   },
+  futurenet: {
+    rpcUrl: 'https://rpc-futurenet.stellar.org',
+    horizonUrl: 'https://horizon-futurenet.stellar.org',
+    networkPassphrase: 'Test SDF Future Network ; October 2022',
+  },
   local: {
     rpcUrl: 'http://localhost:8000/soroban/rpc',
     horizonUrl: 'http://localhost:8000',
     networkPassphrase: 'Standalone Network ; February 2017',
   },
 };
+
+/**
+ * Create a StellarClient configured for the given network.
+ *
+ * @throws {NetworkError} when the network is not supported
+ */
+export function createStellarClient(
+  network: NetworkId,
+  config?: Omit<StellarClientConfig, 'network'>
+): StellarClient {
+  if (!(network in NETWORK_CONFIG)) {
+    throw new NetworkError(`Unsupported network: ${network}`);
+  }
+
+  return new StellarClient({ network, ...config });
+}
 
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
 const DEFAULT_ASSET_METADATA_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -110,6 +135,10 @@ export class StellarClient {
   constructor(config: StellarClientConfig) {
     this.network = config.network;
 
+    if (!(config.network in NETWORK_CONFIG)) {
+      throw new NetworkError(`Unsupported network: ${config.network}`);
+    }
+
     const networkConfig = NETWORK_CONFIG[config.network];
     this.rpcUrls = this.resolveRpcUrls(config, networkConfig.rpcUrl);
     const horizonUrl = networkConfig.horizonUrl;
@@ -160,27 +189,19 @@ export class StellarClient {
       return error.statusCode;
     }
 
-    if (
-      error &&
-      typeof error === 'object' &&
-      'statusCode' in error &&
-      typeof error.statusCode === 'number'
-    ) {
+    if (!error || typeof error !== 'object') {
+      return undefined;
+    }
+
+    if ('statusCode' in error && typeof error.statusCode === 'number') {
       return error.statusCode;
     }
 
-    if (
-      error &&
-      typeof error === 'object' &&
-      'status' in error &&
-      typeof error.status === 'number'
-    ) {
+    if ('status' in error && typeof error.status === 'number') {
       return error.status;
     }
 
     if (
-      error &&
-      typeof error === 'object' &&
       'response' in error &&
       error.response &&
       typeof error.response === 'object' &&
@@ -233,41 +254,6 @@ export class StellarClient {
     }
 
     return this.isRetryableNetworkError(error);
-  }
-
-  private getHorizonResponseData(error: unknown): unknown {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'response' in error &&
-      error.response &&
-      typeof error.response === 'object' &&
-      'data' in error.response
-    ) {
-      return error.response.data;
-    }
-
-    return undefined;
-  }
-
-  private getTransactionResultCode(error: unknown): string | undefined {
-    const data = this.getHorizonResponseData(error);
-
-    if (!data || typeof data !== 'object' || !('extras' in data)) {
-      return undefined;
-    }
-
-    const { extras } = data;
-    if (!extras || typeof extras !== 'object' || !('result_codes' in extras)) {
-      return undefined;
-    }
-
-    const { result_codes: resultCodes } = extras;
-    if (!resultCodes || typeof resultCodes !== 'object' || !('transaction' in resultCodes)) {
-      return undefined;
-    }
-
-    return typeof resultCodes.transaction === 'string' ? resultCodes.transaction : undefined;
   }
 
   private isRetryableRpcError(error: Error): boolean {
@@ -372,7 +358,7 @@ export class StellarClient {
         }
         if (
           error.lastError instanceof AccountNotFoundError ||
-          error.lastError instanceof NetworkError
+          (error.lastError instanceof NetworkError && error.lastError.statusCode !== 429)
         ) {
           throw error.lastError;
         }
@@ -520,17 +506,35 @@ export class StellarClient {
   /**
    * Simulate a Soroban transaction against the RPC server.
    *
-   * @param transaction - The transaction to simulate
-   * @returns The raw simulation response from Soroban RPC
-   * @throws NetworkError if the RPC request fails
+   * When passed a `Transaction`, returns the raw Soroban RPC response (for
+   * assemble/submit flows). When passed unsigned XDR, returns a parsed
+   * wallet-friendly simulation result.
    */
   async simulateTransaction(
     transaction: Transaction
-  ): Promise<StellarRpc.Api.SimulateTransactionResponse> {
+  ): Promise<StellarRpc.Api.SimulateTransactionResponse>;
+  async simulateTransaction(unsignedXdr: string): Promise<ParsedSimulationResult>;
+  async simulateTransaction(
+    transactionOrXdr: Transaction | string
+  ): Promise<StellarRpc.Api.SimulateTransactionResponse | ParsedSimulationResult> {
+    if (typeof transactionOrXdr === 'string') {
+      return simulateUnsignedTransaction(transactionOrXdr, this.networkPassphrase, (transaction) =>
+        this.executeRpcWithFailover((server) => server.simulateTransaction(transaction))
+      ).catch((error) => ({
+        fee: '0.0000000',
+        resourceLimits: { cpuInsn: 0, memBytes: 0 },
+        authEntries: [],
+        footprint: '',
+        error: error instanceof Error ? error.message : 'Simulation request failed',
+      }));
+    }
+
     try {
       return await withRetry(
         async () =>
-          this.executeRpcWithFailover((rpcServer) => rpcServer.simulateTransaction(transaction)),
+          this.executeRpcWithFailover((rpcServer) =>
+            rpcServer.simulateTransaction(transactionOrXdr)
+          ),
         {
           ...this.retryOptions,
           isRetryable: (error) => this.isRetryableRpcError(error),
@@ -555,29 +559,51 @@ export class StellarClient {
    * @throws NetworkError if the network request fails
    */
   async submitTransaction(
-    transaction: Transaction
+    transaction: Transaction | string,
+    options?: { retryOptions?: RetryOptions }
   ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> {
+    let signedTransaction: Transaction;
     try {
-      return await withRetry(
-        async () => {
-          try {
-            const response = await this.horizonServer.submitTransaction(transaction);
-            return response;
-          } catch (error) {
-            const resultCode = this.getTransactionResultCode(error);
-            if (resultCode) {
-              throw new TransactionError('Transaction submission failed', {
-                resultCode,
-              });
-            }
-            throw this.createHorizonNetworkError('Failed to submit transaction', error);
-          }
-        },
-        {
-          ...this.retryOptions,
-          isRetryable: (error) => this.isRetryableHorizonError(error),
+      signedTransaction = this.resolveSignedTransaction(transaction);
+    } catch (error) {
+      throw new NetworkError('Invalid signed transaction XDR', {
+        cause: error instanceof Error ? error : undefined,
+      });
+    }
+
+    const callerIsRetryable = options?.retryOptions?.isRetryable ?? this.retryOptions.isRetryable;
+    const retryOptions: RetryOptions = {
+      maxRetries: 4, // 5 attempts total
+      exponential: true,
+      ...this.retryOptions,
+      ...options?.retryOptions,
+      isRetryable: (error) => {
+        if (error instanceof TransactionError) {
+          return false;
         }
-      );
+
+        if (callerIsRetryable) {
+          return callerIsRetryable(error);
+        }
+
+        const statusCode = this.getErrorStatusCode(error);
+        return statusCode === undefined || statusCode === 429 || statusCode >= 500;
+      },
+    };
+
+    try {
+      return await withRetry(async () => {
+        try {
+          const response = await this.horizonServer.submitTransaction(signedTransaction);
+          return response;
+        } catch (error) {
+          const transactionError = TransactionError.fromHorizonError(error);
+          if (transactionError) {
+            throw transactionError;
+          }
+          throw this.createHorizonNetworkError('Failed to submit transaction', error);
+        }
+      }, retryOptions);
     } catch (error: unknown) {
       if (error instanceof RetryExhaustedError && error.lastError) {
         if (this.isRateLimitedNetworkError(error.lastError)) {
@@ -592,6 +618,14 @@ export class StellarClient {
       }
       throw error;
     }
+  }
+
+  private resolveSignedTransaction(transaction: Transaction | string): Transaction {
+    if (typeof transaction !== 'string') {
+      return transaction;
+    }
+
+    return TransactionBuilder.fromXDR(transaction, this.networkPassphrase) as Transaction;
   }
 
   /**

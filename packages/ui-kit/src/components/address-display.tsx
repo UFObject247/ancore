@@ -35,7 +35,16 @@ export interface AddressDisplayProps extends React.HTMLAttributes<HTMLDivElement
  */
 const AddressDisplay = React.forwardRef<HTMLDivElement, AddressDisplayProps>(
   (
-    { address, copyable = true, truncate = 6, label, onCopy, copied: copiedProp, className, ...props },
+    {
+      address,
+      copyable = true,
+      truncate = 6,
+      label,
+      onCopy,
+      copied: copiedProp,
+      className,
+      ...props
+    },
     ref
   ) => {
     const [internalCopied, setInternalCopied] = React.useState(false);
@@ -80,7 +89,7 @@ const AddressDisplay = React.forwardRef<HTMLDivElement, AddressDisplayProps>(
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8"
               aria-label="Copy address"
             >
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </button>
           )}
         </div>

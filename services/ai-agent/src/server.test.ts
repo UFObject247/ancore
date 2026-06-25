@@ -1,21 +1,24 @@
 import request from 'supertest';
-import { createApp } from './server';
 import { enforceNoAutonomousExecution } from './guardrail';
+import { createApp } from './server';
 import type { DraftIntentResponse } from './types';
 
 const app = createApp();
 
-// ── /health ───────────────────────────────────────────────────────────────────
-
 describe('GET /health', () => {
-  it('returns 200 with status ok', async () => {
+  it('returns the service health payload', async () => {
     const res = await request(app).get('/health');
+
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok', service: 'ai-agent' });
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      service: 'ai-agent',
+      version: '0.1.0',
+    });
+    expect(typeof res.body.uptime).toBe('number');
+    expect(Date.parse(res.body.timestamp)).not.toBeNaN();
   });
 });
-
-// ── /agent/draft-intent ───────────────────────────────────────────────────────
 
 describe('POST /agent/draft-intent', () => {
   const validBody = { prompt: 'Send 10 XLM to Alice', accountId: 'GABC123' };
@@ -57,7 +60,105 @@ describe('POST /agent/draft-intent', () => {
   });
 });
 
-// ── guardrail ─────────────────────────────────────────────────────────────────
+describe('POST /v1/intents/validate', () => {
+  it('validates a payment intent and returns confirmation false for low-value payments', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '100',
+      asset: 'XLM',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.requiresConfirmation).toBe(false);
+    expect(res.body.intent).toBeDefined();
+  });
+
+  it('validates a payment intent and returns confirmation true for high-value payments', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '1500',
+      asset: 'XLM',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.requiresConfirmation).toBe(true);
+    expect(res.body.intent).toBeDefined();
+  });
+
+  it('validates a payment intent at exactly the threshold and returns confirmation true', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '1000',
+      asset: 'USDC',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.requiresConfirmation).toBe(true);
+    expect(res.body.intent).toBeDefined();
+  });
+
+  it('validates a payment intent with decimal amount below threshold', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '999.99',
+      asset: 'XLM',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.requiresConfirmation).toBe(false);
+    expect(res.body.intent).toBeDefined();
+  });
+
+  it('validates a payment intent with decimal amount above threshold', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '1000.01',
+      asset: 'USDC',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.requiresConfirmation).toBe(true);
+    expect(res.body.intent).toBeDefined();
+  });
+
+  it('accepts payment intent with requiresConfirmation field in request', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '100',
+      asset: 'XLM',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+      requiresConfirmation: false,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.intent.requiresConfirmation).toBe(false);
+  });
+
+  it('returns validation errors for invalid intent', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: 'invalid',
+      asset: 'XLM',
+      destination: 'GCZST3XVCDTUJ76ZAV2HA72KYPJW5YJSNXVZTSKNBPWTXGVLNPXQ4JH',
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.errors).toBeDefined();
+  });
+
+  it('returns validation errors for missing required fields', async () => {
+    const res = await request(app).post('/v1/intents/validate').send({
+      type: 'payment',
+      amount: '100',
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.errors).toBeDefined();
+  });
+});
 
 describe('enforceNoAutonomousExecution', () => {
   const validDraft: DraftIntentResponse = {

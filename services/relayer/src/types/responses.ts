@@ -8,6 +8,7 @@ export type RelayErrorCode =
   | 'NONCE_REPLAY'
   | 'GAS_LIMIT_EXCEEDED'
   | 'SIMULATION_FAILED'
+  | 'TRANSFER_LIMIT_EXCEEDED'
   | 'UNAUTHORIZED'
   | 'INTERNAL_ERROR';
 

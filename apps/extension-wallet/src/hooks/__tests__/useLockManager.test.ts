@@ -5,6 +5,7 @@ import { useSettingsStore, DEFAULTS } from '../../stores/settings';
 
 const setAutoLockMinutesSpy = vi.fn();
 const destroySpy = vi.fn();
+const lockSpy = vi.fn();
 
 vi.mock('@ancore/core-sdk', () => ({
   SecureStorageManager: class {
@@ -17,7 +18,9 @@ vi.mock('@ancore/core-sdk', () => ({
 vi.mock('../../security/lock-manager', () => ({
   LockManager: class {
     async unlock() {}
-    lock() {}
+    lock() {
+      lockSpy();
+    }
     setAutoLockMinutes(minutes: number) {
       setAutoLockMinutesSpy(minutes);
     }
@@ -31,6 +34,7 @@ describe('useLockManager', () => {
   beforeEach(() => {
     setAutoLockMinutesSpy.mockClear();
     destroySpy.mockClear();
+    lockSpy.mockClear();
     useSettingsStore.setState(DEFAULTS);
   });
 
@@ -45,5 +49,15 @@ describe('useLockManager', () => {
 
     unmount();
     expect(destroySpy).toHaveBeenCalled();
+  });
+
+  it('lock() calls the underlying LockManager lock method', () => {
+    const { result } = renderHook(() => useLockManager());
+
+    act(() => {
+      result.current.lock();
+    });
+
+    expect(lockSpy).toHaveBeenCalledTimes(1);
   });
 });

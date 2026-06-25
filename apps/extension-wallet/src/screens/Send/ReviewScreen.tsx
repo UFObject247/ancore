@@ -2,13 +2,24 @@ import { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Separator, cn } from '@ancore/ui-kit';
 import type { SendTransactionDraft } from '@/hooks/useSendTransaction';
 import { TransferNotePreview } from '@/components/TransferNotePreview';
-import { ShieldCheck, ArrowRight, Wallet, Globe, Info, CalendarClock } from 'lucide-react';
+import {
+  ShieldCheck,
+  ArrowRight,
+  Wallet,
+  Globe,
+  Info,
+  AlertCircle,
+  CalendarClock,
+} from 'lucide-react';
 import type { ScheduleConfig, TransferTiming } from '@/screens/Send/ScheduleControls';
+import { SimulationPreview, type SimulationState } from './SimulationPreview';
 
 interface ReviewScreenProps {
   transaction: SendTransactionDraft;
   timing?: TransferTiming;
   schedule?: ScheduleConfig;
+  /** Simulation state — when provided, shows the preview panel above the fee summary. */
+  simulation?: SimulationState;
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -24,10 +35,24 @@ export function ReviewScreen({
   transaction,
   timing,
   schedule,
+  simulation,
   onBack,
   onConfirm,
 }: ReviewScreenProps) {
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [simulationSkipped, setSimulationSkipped] = useState(false);
+  const isDev = import.meta.env.DEV;
+
+  const simulatedFee =
+    simulation?.status === 'success' ? simulation.simulatedFee : transaction.fee.totalFee;
+  const displayTotal =
+    simulation?.status === 'success'
+      ? (Number(transaction.amount) + Number(simulatedFee)).toFixed(7)
+      : transaction.total;
+
+  const simulationBlocksApprove =
+    simulation?.status === 'loading' ||
+    (simulation?.status === 'error' && !(isDev && simulationSkipped));
 
   return (
     <Card className="w-full max-w-md bg-slate-950 border-white/10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
@@ -94,6 +119,20 @@ export function ReviewScreen({
         {/* Transfer Note */}
         {transaction.truncatedNote && <TransferNotePreview note={transaction.truncatedNote} />}
 
+        {transaction.policyAction === 'step_up' && transaction.policyMessage && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <AlertCircle className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
+            <div className="space-y-1">
+              <strong className="block text-[11px] uppercase tracking-widest text-amber-300 font-black">
+                Verification Required
+              </strong>
+              <p className="text-[10px] text-amber-200 leading-relaxed">
+                {transaction.policyMessage}
+              </p>
+            </div>
+          </div>
+        )}
+
         {timing === 'scheduled' && schedule && (
           <div className="space-y-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
             <div className="flex items-center gap-2">
@@ -125,19 +164,40 @@ export function ReviewScreen({
         {/* Fees Summary */}
         <div className="space-y-3 bg-white/5 border border-white/10 rounded-2xl p-5">
           <div className="flex justify-between items-center text-[10px] font-bold">
-            <span className="text-slate-500 uppercase tracking-widest">Base Network Fee</span>
-            <span className="text-slate-300 font-mono">{transaction.fee.baseFee} XLM</span>
+            <span className="text-slate-500 uppercase tracking-widest">
+              {simulation?.status === 'success' ? 'Simulated Network Fee' : 'Base Network Fee'}
+            </span>
+            <span className="text-slate-300 font-mono" data-testid="review-network-fee">
+              {simulatedFee} XLM
+            </span>
           </div>
           <Separator className="bg-white/5" />
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
               Total to Debit
             </span>
-            <span className="text-cyan-400 font-mono text-base font-black">
-              {transaction.total} XLM
+            <span
+              className="text-cyan-400 font-mono text-base font-black"
+              data-testid="review-total"
+            >
+              {displayTotal} XLM
             </span>
           </div>
         </div>
+
+        {/* Simulation Preview */}
+        {simulation && <SimulationPreview simulation={simulation} />}
+
+        {isDev && simulation?.status === 'error' && !simulationSkipped && (
+          <button
+            type="button"
+            className="w-full text-[10px] uppercase tracking-widest text-amber-300/80 hover:text-amber-200"
+            data-testid="skip-simulation-dev"
+            onClick={() => setSimulationSkipped(true)}
+          >
+            Skip simulation (dev only)
+          </button>
+        )}
 
         {/* Explicit Confirmation Step */}
         <div
@@ -191,7 +251,7 @@ export function ReviewScreen({
           </Button>
           <Button
             type="button"
-            disabled={!isConfirmed}
+            disabled={!isConfirmed || simulationBlocksApprove}
             className="flex-[2] bg-cyan-400 text-slate-950 font-black uppercase tracking-widest rounded-2xl h-12 shadow-[0_10px_20px_rgba(34,211,238,0.2)] hover:bg-cyan-300 disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2 text-[10px]"
             onClick={onConfirm}
           >

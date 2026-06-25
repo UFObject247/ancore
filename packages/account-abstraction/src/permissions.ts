@@ -38,9 +38,7 @@ export function permissionsToBitmask(perms: SessionPermission[]): number {
  * Expand a permission bitmask back into session permission enum values.
  */
 export function bitmaskToPermissions(bitmask: number): SessionPermission[] {
-  return ALL_SESSION_PERMISSIONS.filter(
-    (permission) => (bitmask & PERM_BITS[permission]) !== 0
-  );
+  return ALL_SESSION_PERMISSIONS.filter((permission) => (bitmask & PERM_BITS[permission]) !== 0);
 }
 
 /**
@@ -58,9 +56,7 @@ export function permissionsToContractVec(perms: SessionPermission[]): number[] {
  * Unknown values are omitted.
  */
 export function contractVecToPermissions(vec: number[]): SessionPermission[] {
-  return vec.filter((value): value is SessionPermission =>
-    SESSION_PERMISSION_VALUES.has(value)
-  );
+  return vec.filter((value): value is SessionPermission => SESSION_PERMISSION_VALUES.has(value));
 }
 
 /**

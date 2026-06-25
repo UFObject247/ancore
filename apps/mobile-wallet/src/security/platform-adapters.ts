@@ -101,8 +101,8 @@ export class WalletPasswordAuthService implements IPasswordAuthService {
 // Secure storage adapter
 export function makeSecureStorageAdapter(store: SecureStoreAdapter) {
   return {
-    getItem: (key: string) => store.get<string>(key),
-    setItem: (key: string, value: string) => store.set<string>(key, value),
+    getItem: (key: string) => store.get(key),
+    setItem: (key: string, value: string) => store.set(key, value),
     removeItem: (key: string) => store.remove(key),
   };
 }

@@ -2,6 +2,8 @@
 
 Browser extension wallet for the Ancore account abstraction layer on Stellar.
 
+**Agent / contributor guide:** [AGENTS.md](./AGENTS.md) (modeled on [Freighter AGENTS.md](https://github.com/stellar/freighter/blob/master/AGENTS.md)).
+
 ## Architecture
 
 ```

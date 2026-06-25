@@ -1,22 +1,23 @@
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
+use metrics_exporter_prometheus::PrometheusBuilder;
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use tower_governor::GovernorLayer;
 use tower_governor::governor::GovernorConfigBuilder;
+use tower_governor::GovernorLayer;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod api;
 mod error;
+mod metrics;
 mod repositories;
+
+use ancore_indexer::ingest::CheckpointStore;
 
 use api::account_activity;
 use api::health;
-use api::metrics;
+use api::metrics::{metrics_handler, prometheus_metrics_handler};
 use api::statements;
 
 #[tokio::main]
@@ -32,6 +33,22 @@ async fn main() -> anyhow::Result<()> {
 
     // Load environment variables
     dotenvy::dotenv().ok();
+
+    // Initialize Prometheus metrics exporter
+    let prometheus_port = std::env::var("PROMETHEUS_PORT")
+        .unwrap_or_else(|_| "9090".to_string())
+        .parse::<u16>()
+        .unwrap_or(9090);
+
+    PrometheusBuilder::new()
+        .with_http_listener(SocketAddr::from(([0, 0, 0, 0], prometheus_port)))
+        .install()
+        .expect("failed to install Prometheus exporter");
+
+    tracing::info!("Prometheus metrics available on port {}", prometheus_port);
+
+    // Initialize metric descriptions
+    metrics::init_prometheus_metrics();
 
     // Configure rate limiting
     let per_second = std::env::var("RATE_LIMIT_PER_SECOND")
@@ -64,7 +81,8 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Invalid database URL: {}", e))?;
 
     // Set statement timeout (query level)
-    connect_options = connect_options.options([("statement_timeout", format!("{}s", db_timeout_sec))]);
+    connect_options =
+        connect_options.options([("statement_timeout", format!("{}s", db_timeout_sec))]);
 
     // Create database connection pool
     let pool = PgPoolOptions::new()
@@ -74,6 +92,18 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     tracing::info!("Connected to database");
+
+    // Load ingest checkpoint cursor on startup for durable resume.
+    let checkpoint_store = ancore_indexer::ingest::PostgresCheckpointStore::new(pool.clone());
+    match checkpoint_store.load("main").await {
+        Ok(Some(cp)) => tracing::info!(
+            stream = %cp.stream,
+            last_ledger_seq = cp.last_ledger_seq,
+            "ingest checkpoint loaded"
+        ),
+        Ok(None) => tracing::info!("no ingest checkpoint found, starting fresh"),
+        Err(err) => tracing::warn!(error = %err, "failed to load ingest checkpoint"),
+    }
 
     // Build our application with routes
     let app = Router::new()
@@ -95,7 +125,8 @@ async fn main() -> anyhow::Result<()> {
             get(statements::rows_handler),
         )
         .route("/health", get(health::health_handler))
-        .route("/metrics", get(metrics::metrics_handler))
+        .route("/metrics", get(metrics_handler))
+        .route("/metrics/prometheus", get(prometheus_metrics_handler))
         .layer(GovernorLayer {
             config: governor_conf,
         })

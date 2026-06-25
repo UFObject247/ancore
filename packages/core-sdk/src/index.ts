@@ -129,6 +129,7 @@ export { getSessionKeys, type GetSessionKeysDeps } from './storage/get-session-k
 export type {
   AccountData,
   EncryptedPayload,
+  PlatformStorageAdapter,
   RecentRecipient,
   RecentRecipientsData,
   SessionKeysData,

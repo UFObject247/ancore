@@ -1,14 +1,13 @@
-import { registerHandler, installMessageDispatcher } from '@/messaging';
-import { getSharedStorageManager } from '@/security/storage-manager';
-import { readAuthState } from '@/router/AuthGuard';
+import { installMessageDispatcher } from '@/messaging';
+import { registerInternalHandlers, probeServicesOnStartup } from './handlers';
+import { restoreUnlockSessionFromStorage } from './session-state';
 import {
-  probeAllServiceHealth,
-  setCachedHealth,
-  resolveRelayerUrl,
-  resolveIndexerUrl,
-  validateServiceUrls,
-  type ServiceUrlConfig,
-} from '@/config/urls';
+  registerAllExternalHandlers,
+  dispatchExternalRequest,
+} from '@/background/handlers/external';
+import { openMockApproval } from './approval-window';
+import { resolveRequest, rejectRequest } from './handlers/external/response-queue';
+import type { ExternalApiRequest, ExternalApiMethodName } from '@ancore/types';
 
 type ChromeRuntimeManifest = {
   name: string;
@@ -28,18 +27,40 @@ declare const chrome: {
     onStartup: {
       addListener(callback: () => void): void;
     };
-  };
-  storage: {
-    local: {
-      get(key: string, callback: (result: Record<string, unknown>) => void): void;
-      set(items: Record<string, unknown>, callback?: () => void): void;
+    onMessage: {
+      addListener(
+        callback: (
+          message: unknown,
+          sender: { url?: string; origin?: string; tab?: { id?: number } },
+          sendResponse: (response: unknown) => void
+        ) => boolean | void
+      ): void;
     };
+    getURL(path: string): string;
+  };
+  tabs: {
+    query(queryInfo: {
+      active?: boolean;
+      lastFocusedWindow?: boolean;
+    }): Promise<{ id?: number; windowId?: number }[]>;
+  };
+  sidePanel?: {
+    setOptions(options: { path?: string; enabled?: boolean }): Promise<void>;
+    open(options: { windowId: number }): Promise<void>;
+  };
+  windows: {
+    create(createData: {
+      url?: string;
+      type?: string;
+      width?: number;
+      height?: number;
+    }): Promise<{ id?: number }>;
   };
 };
 
 const logPrefix = '[ancore-extension/background]';
 
-const runtime = (globalThis as { chrome?: { runtime?: any } }).chrome?.runtime;
+const runtime = (globalThis as { chrome?: { runtime?: typeof chrome.runtime } }).chrome?.runtime;
 const manifest = (runtime?.getManifest?.() as ChromeRuntimeManifest | undefined) ?? {
   name: 'ancore-extension-wallet',
   version: '0.0.0',
@@ -50,224 +71,123 @@ console.info(`${logPrefix} booted`, {
   version: manifest.version,
 });
 
+void restoreUnlockSessionFromStorage().then((restored) => {
+  if (restored) {
+    console.info(`${logPrefix} unlock session restored from chrome.storage.session`);
+  }
+});
+
 runtime?.onInstalled?.addListener((details: ChromeInstalledDetails) => {
   console.info(`${logPrefix} installed`, { reason: details.reason });
 });
 
 runtime?.onStartup?.addListener(() => {
   console.info(`${logPrefix} startup`);
-  runServiceHealthProbes().catch((err) => {
+  void probeServicesOnStartup().catch((err) => {
     console.warn(`${logPrefix} health probe failed on startup`, err);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Service URL health probing
+// External API handlers (dApp connectivity)
 // ---------------------------------------------------------------------------
 
+// Register all external API handlers
+registerAllExternalHandlers();
+
 /**
- * Resolves the active service URLs from storage (or falls back to defaults),
- * validates their format, then probes /health on each service.
- * Results are cached in the config/urls module so the popup can read them.
+ * Handle EXTERNAL_API_REQUEST messages from content script.
+ * These are requests from dApps to interact with the wallet.
  */
-async function runServiceHealthProbes(): Promise<void> {
-  // Read persisted environment preference (defaults to 'production')
-  let environment = 'production';
-  try {
-    const raw = await getChromeStorage('ancore_dashboard_settings');
-    if (raw && typeof raw === 'string') {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof parsed['environment'] === 'string') {
-        environment = parsed['environment'];
-      }
+chrome.runtime.onMessage.addListener(
+  (
+    message: unknown,
+    sender: { url?: string; origin?: string; tab?: { id?: number } },
+    sendResponse: (response: unknown) => void
+  ) => {
+    const request = message as ExternalApiRequest;
+
+    if (request.type !== 'EXTERNAL_API_REQUEST') {
+      return false;
     }
-  } catch {
-    // Ignore storage errors — fall back to production
-  }
 
-  const config: ServiceUrlConfig = {
-    relayerUrl: resolveRelayerUrl(environment),
-    indexerUrl: resolveIndexerUrl(environment),
-  };
+    const { method, requestId, params, origin } = request;
 
-  // Synchronous format check first
-  const formatErrors = validateServiceUrls(config);
-  if (formatErrors.length > 0) {
-    console.warn(`${logPrefix} invalid service URLs`, formatErrors);
-    return;
-  }
-
-  console.info(`${logPrefix} probing service health`, { environment });
-  const results = await probeAllServiceHealth(config);
-
-  for (const result of results) {
-    setCachedHealth(result);
-    if (result.status !== 'ok') {
-      console.warn(`${logPrefix} service health degraded`, result);
-    } else {
-      console.info(`${logPrefix} service health ok`, {
-        service: result.service,
-        latencyMs: result.latencyMs,
+    // Validate origin
+    if (!origin || typeof origin !== 'string') {
+      sendResponse({
+        type: 'EXTERNAL_API_RESPONSE',
+        requestId,
+        ok: false,
+        error: 'Invalid origin',
       });
+      return true;
     }
-  }
-}
 
-// ---------------------------------------------------------------------------
-// In-memory session state (backing store cleared on lock)
-// ---------------------------------------------------------------------------
-
-/** The wallet is considered unlocked only for the lifetime of the service-worker. */
-let _sessionUnlocked = false;
-
-function getChromeStorage(key: string): Promise<unknown> {
-  return new Promise((resolve) => {
-    const chromeRef = (globalThis as { chrome?: any }).chrome;
-    if (chromeRef?.storage?.local) {
-      chromeRef.storage.local.get(key, (result: Record<string, unknown>) => {
-        resolve(result[key] ?? null);
+    // Validate sender origin matches
+    if (sender.origin && sender.origin !== origin) {
+      sendResponse({
+        type: 'EXTERNAL_API_RESPONSE',
+        requestId,
+        ok: false,
+        error: 'Origin mismatch',
       });
-    } else {
-      // Fallback to localStorage in dev/test
-      resolve(localStorage.getItem(key));
+      return true;
     }
-  });
-}
 
-function setChromeStorage(key: string, value: unknown): Promise<void> {
-  return new Promise((resolve) => {
-    const chromeRef = (globalThis as { chrome?: any }).chrome;
-    if (chromeRef?.storage?.local) {
-      chromeRef.storage.local.set({ [key]: value }, resolve);
-    } else {
-      // Fallback to localStorage in dev/test
-      localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
-      resolve();
-    }
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Message handlers
-// ---------------------------------------------------------------------------
-
-/**
- * GET_WALLET_STATE — returns the authoritative wallet state from storage/session.
- *
- * Reads the persisted AuthState to determine if the user has onboarded, and
- * combines it with the in-memory session flag to determine lock status.
- */
-registerHandler('GET_WALLET_STATE', async () => {
-  const authState = readAuthState();
-
-  if (!authState.hasOnboarded) {
-    return { state: 'uninitialized' as const };
-  }
-
-  if (!_sessionUnlocked) {
-    return { state: 'locked' as const };
-  }
-
-  return { state: 'unlocked' as const };
-});
-
-/**
- * LOCK_WALLET — locks the wallet immediately, clearing the session flag.
- *
- * Persists the lock state to storage so the popup can reflect it on reload.
- */
-registerHandler('LOCK_WALLET', async () => {
-  try {
-    _sessionUnlocked = false;
-    getSharedStorageManager().lock();
-
-    // Persist lock to auth storage
-    const authState = readAuthState();
-    await setChromeStorage(
-      'ancore_extension_auth',
-      JSON.stringify({
-        ...authState,
-        isUnlocked: false,
+    // Dispatch to handler
+    void dispatchExternalRequest(method as ExternalApiMethodName, {
+      origin,
+      params,
+      requestId,
+      sender,
+    })
+      .then((result) => {
+        sendResponse({
+          type: 'EXTERNAL_API_RESPONSE',
+          requestId,
+          ok: true,
+          result,
+        });
       })
-    );
+      .catch((error: Error) => {
+        sendResponse({
+          type: 'EXTERNAL_API_RESPONSE',
+          requestId,
+          ok: false,
+          error: error.message,
+        });
+      });
 
-    console.info(`${logPrefix} wallet locked`);
-    return { success: true };
-  } catch (err) {
-    console.error(`${logPrefix} lock failed`, err);
-    return { success: false };
+    return true; // Async response
   }
-});
+);
 
-/**
- * UNLOCK_WALLET — verifies the password and unlocks the wallet.
- *
- * On success: sets the in-memory session flag and persists the unlocked
- * state so the popup React tree can pick it up via its storage listener.
- */
-registerHandler('UNLOCK_WALLET', async ({ password }) => {
-  try {
-    if (!password || typeof password !== 'string') {
-      console.warn(`${logPrefix} unlock attempted with invalid password`);
-      return { success: false };
-    }
-
-    // Read persisted auth state
-    const authState = readAuthState();
-
-    if (!authState.hasOnboarded) {
-      console.warn(`${logPrefix} unlock attempted before onboarding`);
-      return { success: false };
-    }
-
-    const storageManager = getSharedStorageManager();
-    const isUnlocked = await storageManager.unlock(password);
-
-    if (!isUnlocked) {
-      console.warn(`${logPrefix} unlock rejected by SecureStorageManager`);
-      return { success: false };
-    }
-
-    _sessionUnlocked = true;
-
-    await setChromeStorage(
-      'ancore_extension_auth',
-      JSON.stringify({
-        ...authState,
-        isUnlocked: true,
-      })
-    );
-
-    console.info(`${logPrefix} wallet unlocked`);
-    return { success: true };
-  } catch (err) {
-    console.error(`${logPrefix} unlock failed`, err);
-    _sessionUnlocked = false;
-    return { success: false };
-  }
-});
-
-/**
- * CHECK_SERVICE_HEALTH — triggers a fresh health probe and returns results.
- *
- * Called by the popup when the user opens Settings or when a send is blocked.
- */
-registerHandler('CHECK_SERVICE_HEALTH', async () => {
-  try {
-    await runServiceHealthProbes();
-    const { getCachedHealth } = await import('@/config/urls');
-    return {
-      relayer: getCachedHealth('relayer'),
-      indexer: getCachedHealth('indexer'),
-    };
-  } catch (err) {
-    console.error(`${logPrefix} CHECK_SERVICE_HEALTH failed`, err);
-    return {
-      relayer: { service: 'relayer' as const, status: 'unreachable' as const },
-      indexer: { service: 'indexer' as const, status: 'unreachable' as const },
-    };
-  }
-});
-
-// Activate the dispatcher — must be called after all handlers are registered.
+// Register internal handlers and activate dispatcher
+registerInternalHandlers();
 installMessageDispatcher();
+
+// Dev-only: handle mock approval requests from popup
+chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  if ((message as { type?: string }).type === 'DEV_OPEN_APPROVAL') {
+    void openMockApproval().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  return false;
+});
+
+// Handle approve/reject from side panel or popup approval screen
+chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  const msg = message as { type?: string; requestId?: string };
+  if (msg.type === 'APPROVE_SIGN_REQUEST' && msg.requestId) {
+    resolveRequest(msg.requestId, { signedXdr: 'AAAAAgAAAAA=' });
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (msg.type === 'REJECT_SIGN_REQUEST' && msg.requestId) {
+    rejectRequest(msg.requestId, new Error('User rejected the sign request'));
+    sendResponse({ ok: true });
+    return true;
+  }
+  return false;
+});

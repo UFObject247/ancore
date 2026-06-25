@@ -16,7 +16,7 @@ export interface Signature {
   v: number;
 }
 
-export type Network = 'testnet' | 'mainnet' | 'local';
+export type Network = 'testnet' | 'mainnet' | 'futurenet' | 'local';
 
 export interface NetworkConfig {
   network: Network;
@@ -31,6 +31,7 @@ export * from './smart-account';
 export * from './session-key';
 export * from './user-operation';
 export * from './wallet';
+export * from './transfer-policy';
 export * from './guards';
 export * from './schemas';
 export * from './payment-request';
@@ -38,3 +39,5 @@ export * from './contacts';
 export * from './scheduled-transfer';
 export * from './statement';
 export * from './handle-resolution';
+export * from './invoice';
+export * from './external-api';

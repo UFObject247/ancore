@@ -100,13 +100,7 @@ export function parseBulkPayoutCsv(csv: string): BulkPayoutParseResult {
     const signedTransactionXdr =
       signedTransactionXdrIndex === -1 ? undefined : record[signedTransactionXdrIndex]?.trim();
     accumulator.push(
-      createRow(
-        lineNumber,
-        recipient,
-        amount,
-        signedTransactionXdr,
-        validateRow(recipient, amount)
-      )
+      createRow(lineNumber, recipient, amount, signedTransactionXdr, validateRow(recipient, amount))
     );
     return accumulator;
   }, []);
@@ -271,7 +265,10 @@ function validateRow(recipient: string, amount: string): string[] {
 }
 
 function normalizeHeader(value: string): string {
-  return value.trim().toLowerCase().replace(/[\s_-]+/g, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
 }
 
 function normalizeAmount(value: string): string {

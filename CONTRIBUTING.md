@@ -31,6 +31,25 @@ We are committed to providing a welcoming and inclusive environment. Please:
 - wasm32-unknown-unknown target (`rustup target add wasm32-unknown-unknown`)
 - Soroban CLI (`cargo install --locked soroban-cli`)
 
+#### Installing pnpm (Windows)
+
+Node.js ships with Corepack, which manages pnpm for this repo (`packageManager: pnpm@9.0.0`).
+
+```powershell
+# Run PowerShell as Administrator if corepack enable reports EPERM
+corepack enable
+corepack prepare pnpm@9.0.0 --activate
+pnpm --version
+```
+
+If `pnpm` is still not found in new terminals, install it globally:
+
+```powershell
+npm install -g pnpm
+```
+
+Use `corepack pnpm` as a fallback anywhere `pnpm` is unavailable (for example, before Corepack activation completes).
+
 ### Setup
 
 1. Fork the repository
@@ -60,7 +79,20 @@ We are committed to providing a welcoming and inclusive environment. Please:
    pnpm test
    ```
 
+## VS Code Workspace Recommendations
+
+If you use Visual Studio Code, the repository includes a workspace recommendations file and an optional devcontainer for one-click setup.
+
+- Recommended extensions are defined in `.vscode/extensions.json`
+- Devcontainer points to Node 20, pnpm, and Rust support in `.devcontainer/devcontainer.json`
+- VS Code will also enable `editor.formatOnSave` by default for contributors using the devcontainer
+- Optional Soroban/Rust target setup can be completed after container creation with `rustup target add wasm32-unknown-unknown`
+
+To use it, open the repository in VS Code and choose **Reopen in Container** from the Command Palette.
+
 ## Development Workflow
+
+Wallet contributors: see [docs/wallets/FREIGHTER_COMPARISON.md](docs/wallets/FREIGHTER_COMPARISON.md) for the Freighter-informed adoption roadmap and open GitHub issues for scoped work.
 
 ### Branch Naming
 
@@ -134,9 +166,22 @@ make validate-env
 
 ### App-Specific Guides
 
-- **Extension Wallet**: [apps/extension-wallet/README.md](apps/extension-wallet/README.md)
-- **Mobile Wallet**: [apps/mobile-wallet/README.md](apps/mobile-wallet/README.md)
+- **Extension Wallet**: [apps/extension-wallet/README.md](apps/extension-wallet/README.md) — [AGENTS.md](apps/extension-wallet/AGENTS.md)
+- **Mobile Wallet**: [apps/mobile-wallet/README.md](apps/mobile-wallet/README.md) — [AGENTS.md](apps/mobile-wallet/AGENTS.md)
 - **Web Dashboard**: [apps/web-dashboard/README.md](apps/web-dashboard/README.md)
+
+### Developer Shortcuts
+
+We expose a small set of repo-root `pnpm` scripts that map to package-local commands
+using `pnpm --filter`. These make common tasks easier for contributors:
+
+```bash
+pnpm dev:extension   # start @ancore/extension-wallet dev server
+pnpm dev:dashboard   # start @ancore/web-dashboard dev server
+pnpm dev:mobile      # start @ancore/mobile-wallet dev/watch
+pnpm test:extension  # run @ancore/extension-wallet tests
+pnpm test:ui         # run @ancore/ui-kit tests
+```
 
 ### Common Commands
 

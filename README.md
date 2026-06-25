@@ -32,7 +32,8 @@ ancore/
 │   ├── stellar/              # Stellar/Soroban utilities
 │   ├── crypto/               # Cryptographic utilities
 │   ├── ui-kit/               # Shared UI components
-│   └── types/                # Shared TypeScript types
+│   ├── types/                # Shared TypeScript types
+│   └── test-fixtures/        # Shared test fixtures for apps and services
 │
 ├── contracts/                # Soroban smart contracts
 │   ├── account/              # Core account contract
@@ -43,7 +44,7 @@ ancore/
 ├── services/                 # Optional infrastructure
 │   ├── relayer/              # Transaction relay service
 │   ├── indexer/              # Blockchain indexer
-│   └── ai-agent/             # Planned AI orchestration service scaffold
+│   └── ai-agent/             # AI agent MVP (draft-only intents)
 │
 └── docs/                     # Documentation
     ├── architecture/         # System architecture
@@ -62,6 +63,14 @@ pnpm docs:check-structure
 ```
 
 When adding, renaming, or removing documented modules, update the tree inside the `repo-structure-check` markers in this README and in `docs/architecture/OVERVIEW.md`. If the checked documentation set changes, update `scripts/check-docs-repo-structure.mjs` and the docs structure workflow together.
+
+### Local verification before push
+
+Mirror the main CI checks locally:
+
+```bash
+pnpm install --frozen-lockfile && pnpm verify && pnpm docs:check-structure
+```
 
 ## Security Boundaries
 
@@ -127,16 +136,55 @@ pnpm contracts:build
 pnpm contracts:test
 ```
 
+### Local Services Stack
+
+Run the full service stack (postgres, indexer, relayer) locally with Docker Compose:
+
+```bash
+# Start all services
+docker compose -f docker-compose.dev.yml up
+
+# Run indexer migrations
+docker compose -f docker-compose.dev.yml exec indexer \
+  psql $DATABASE_URL -f migrations/001_create_account_activity_table.sql
+
+# Verify services
+curl http://localhost:3000/health  # Indexer
+curl http://localhost:3001/relay/status  # Relayer
+```
+
+See [Local Services Guide](docs/development/local-services.md) for detailed instructions.
+
+### Development Shortcuts
+
+Common per-package dev & test shortcuts (root `package.json` scripts):
+
+- `dev:extension`: Start the extension wallet dev server (`@ancore/extension-wallet`).
+- `dev:dashboard`: Start the web dashboard dev server (`@ancore/web-dashboard`).
+- `dev:mobile`: Start the mobile wallet dev workflow (`@ancore/mobile-wallet`).
+- `test:extension`: Run the extension-wallet test suite (`@ancore/extension-wallet`).
+- `test:ui`: Run the UI kit tests (`@ancore/ui-kit`).
+
+Use these from the repo root to scope commands with `pnpm --filter`:
+
+```bash
+# Start the extension dev server from the repo root
+pnpm dev:extension
+
+# Run UI tests
+pnpm test:ui
+```
+
 ### Updating WASM Size Budgets
 
-WASM contract sizes are monitored in CI to prevent regression. The budget for each contract is defined in `contracts/budgets/wasm-budgets.json`. 
+WASM contract sizes are monitored in CI to prevent regression. The budget for each contract is defined in `contracts/budgets/wasm-budgets.json`.
 
 If your changes intentionally increase the contract size beyond the current budget:
+
 1. Ensure your contract builds locally: `pnpm contracts:build`
 2. Check the new size of the optimized `.wasm` files in `contracts/target/wasm32-unknown-unknown/release/`.
 3. You can run the local size check with: `node scripts/check-wasm-size.js`
 4. Update `contracts/budgets/wasm-budgets.json` with the new size budget, and commit the changes.
-
 
 ## Contributing
 
@@ -183,7 +231,7 @@ For security disclosures, please see [SECURITY.md](SECURITY.md).
 
 ## Maintainers
 
-See [MAINTAINERS.md](MAINTAINERS.md) for the list of maintainers and their responsibilities.
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for contributor expectations and maintainer contact paths.
 
 ## RFCs
 
@@ -194,7 +242,7 @@ Major changes are proposed via RFCs in the `docs/rfcs/` directory. See [RFC.md](
 For a deep dive into Ancore's architecture, see:
 
 - [System Architecture](docs/architecture/OVERVIEW.md)
-- [Account Model](docs/architecture/ACCOUNT_MODEL.md)
+- [Account Contract](contracts/account/README.md)
 - [Security Model](docs/security/THREAT_MODEL.md)
 
 ## Roadmap
@@ -208,13 +256,13 @@ For a deep dive into Ancore's architecture, see:
 - [ ] Production-ready relayer security path
 - [ ] Production-ready account contract hardening and audit
 - [ ] MVP release gate completion
+- [ ] AI agent integration (MVP: draft intents) — see [docs/ai/intents.md](docs/ai/intents.md) and [services/ai-agent/README.md](services/ai-agent/README.md)
 
 ### Planned (post-MVP)
 
 - [ ] Mobile wallet productionization
 - [ ] Social recovery
 - [ ] Invoice system
-- [ ] AI agent integration
 - [ ] Mainnet launch
 
 ### Planned module scaffolds (intentionally preserved)
@@ -222,11 +270,8 @@ For a deep dive into Ancore's architecture, see:
 - `contracts/validation-modules/` - reserved for modular auth/policy contracts
 - `contracts/invoice/` - reserved for invoice/request-to-pay contracts
 - `contracts/upgrade/` - reserved for upgrade governance contracts
-- `services/ai-agent/` - reserved for AI workflow orchestration
 
-These directories are intentionally kept as scaffolds to preserve architecture direction and contributor workflow without implying production completeness.
-
-For execution waves (2-3 features at a time), see `docs/product/FINANCIAL_OS_ROADMAP.md`.
+These directories are intentionally kept as scaffolds to preserve architecture direction and contributor workflow without implying production completeness. The AI agent service (`services/ai-agent/`) ships an MVP with health, draft-intent, and validation routes only — no autonomous execution.
 
 ## Community
 

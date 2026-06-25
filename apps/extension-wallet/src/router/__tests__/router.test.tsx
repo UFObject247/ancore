@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { UnlockVerifier } from '../AuthGuard';
 import { AUTH_STORAGE_KEY, DEFAULT_AUTH_STATE } from '../AuthGuard';
 import { ExtensionRouterTestHarness, HistoryActivityList, filterHistoryEntries } from '..';
+import type { HistoryEntry, HistoryFilter } from '..';
 
 function renderRouter(
   pathname: string,
@@ -25,11 +26,11 @@ describe('extension router', () => {
     document.title = 'Ancore Extension';
   });
 
-  it('redirects first-time users to welcome when they hit a protected route', () => {
+  it('redirects first-time users to onboarding when they hit a protected route', () => {
     renderRouter('/home');
 
-    expect(screen.getByRole('heading', { name: /meet your ancore wallet/i })).toBeInTheDocument();
-    expect(document.title).toBe('Welcome | Ancore Extension');
+    expect(screen.getByRole('heading', { name: /welcome to ancore/i })).toBeInTheDocument();
+    expect(document.title).toBe('Create Wallet | Ancore Extension');
   });
 
   it('redirects onboarded locked users to unlock', () => {
@@ -158,7 +159,7 @@ describe('extension router', () => {
   });
 });
 
-describe('extension transaction history filters', () => {
+describe('extension transaction history', () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.title = 'Ancore Extension';
@@ -170,56 +171,115 @@ describe('extension transaction history filters', () => {
     isUnlocked: true,
   };
 
-  it('shows all transactions by default', () => {
+  const SAMPLE_ENTRIES: HistoryEntry[] = [
+    {
+      id: '1',
+      label: 'Received from Treasury',
+      amount: '+320 XLM',
+      date: 'Today',
+      kind: 'received',
+      status: 'confirmed',
+    },
+    {
+      id: '2',
+      label: 'Sent to Merchant',
+      amount: '-48 XLM',
+      date: 'Yesterday',
+      kind: 'sent',
+      status: 'confirmed',
+    },
+    {
+      id: '3',
+      label: 'Failed merchant payment',
+      amount: '-12 XLM',
+      date: 'Mar 23',
+      kind: 'failed',
+      status: 'failed',
+    },
+  ];
+
+  it('shows no-account placeholder when no smart account is configured', () => {
     renderRouter('/history', unlockedAuthState);
 
-    expect(screen.getByText('Received from Treasury')).toBeInTheDocument();
+    expect(screen.getByText('No account configured')).toBeInTheDocument();
+    expect(
+      screen.getByText('Set up a smart account to view transaction history.')
+    ).toBeInTheDocument();
+  });
+
+  it('renders all three sample entries in HistoryActivityList', () => {
+    render(
+      <HistoryActivityList activeFilter="all" entries={SAMPLE_ENTRIES} onFilterChange={() => {}} />
+    );
+
     expect(screen.getByText('Sent to Merchant')).toBeInTheDocument();
+    expect(screen.getByText('Received from Treasury')).toBeInTheDocument();
     expect(screen.getByText('Failed merchant payment')).toBeInTheDocument();
   });
 
-  it('filters history to sent transactions', async () => {
-    const user = userEvent.setup();
-    renderRouter('/history', unlockedAuthState);
-
-    await user.click(screen.getByRole('button', { name: 'Sent' }));
-
-    expect(screen.getByText('Sent to Merchant')).toBeInTheDocument();
-    expect(screen.queryByText('Received from Treasury')).not.toBeInTheDocument();
-    expect(screen.queryByText('Failed merchant payment')).not.toBeInTheDocument();
-  });
-
-  it('filters history to received transactions', async () => {
-    const user = userEvent.setup();
-    renderRouter('/history', unlockedAuthState);
-
-    await user.click(screen.getByRole('button', { name: 'Received' }));
+  it('filters history to received transactions via HistoryActivityList', () => {
+    render(
+      <HistoryActivityList
+        activeFilter="received"
+        entries={filterHistoryEntries(SAMPLE_ENTRIES, 'received')}
+        onFilterChange={() => {}}
+      />
+    );
 
     expect(screen.getByText('Received from Treasury')).toBeInTheDocument();
     expect(screen.queryByText('Sent to Merchant')).not.toBeInTheDocument();
     expect(screen.queryByText('Failed merchant payment')).not.toBeInTheDocument();
   });
 
-  it('filters history to failed transactions', async () => {
-    const user = userEvent.setup();
-    renderRouter('/history', unlockedAuthState);
-
-    await user.click(screen.getByRole('button', { name: 'Failed' }));
+  it('filters history to failed transactions via HistoryActivityList', () => {
+    render(
+      <HistoryActivityList
+        activeFilter="failed"
+        entries={filterHistoryEntries(SAMPLE_ENTRIES, 'failed')}
+        onFilterChange={() => {}}
+      />
+    );
 
     expect(screen.getByText('Failed merchant payment')).toBeInTheDocument();
     expect(screen.queryByText('Received from Treasury')).not.toBeInTheDocument();
     expect(screen.queryByText('Sent to Merchant')).not.toBeInTheDocument();
   });
 
-  it('stores the active chip in the URL and can return to all transactions', async () => {
+  it('stores the active filter chip and can return to all via URL', async () => {
     const user = userEvent.setup();
-    renderRouter('/history', unlockedAuthState);
+    let activeFilter: HistoryFilter = 'all';
+    const onFilterChange = (f: HistoryFilter) => {
+      activeFilter = f;
+    };
+
+    const { rerender } = render(
+      <HistoryActivityList
+        activeFilter={activeFilter}
+        entries={SAMPLE_ENTRIES}
+        onFilterChange={onFilterChange}
+      />
+    );
 
     await user.click(screen.getByRole('button', { name: 'Sent' }));
+    rerender(
+      <HistoryActivityList
+        activeFilter={activeFilter}
+        entries={SAMPLE_ENTRIES}
+        onFilterChange={onFilterChange}
+      />
+    );
 
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Sent' })).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByRole('button', { name: 'All' }));
+    rerender(
+      <HistoryActivityList
+        activeFilter={activeFilter}
+        entries={SAMPLE_ENTRIES}
+        onFilterChange={onFilterChange}
+      />
+    );
 
     expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Received from Treasury')).toBeInTheDocument();
@@ -250,6 +310,8 @@ describe('extension transaction history filters', () => {
       />
     );
 
-    expect(screen.getByText('No transactions match this filter.')).toBeInTheDocument();
+    expect(screen.getByText('No received transactions')).toBeInTheDocument();
+    expect(screen.getByText('Incoming payments will appear here.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset filter' })).toBeInTheDocument();
   });
 });

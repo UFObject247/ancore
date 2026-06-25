@@ -40,8 +40,7 @@ export const CONTRACT_PERMISSION_VECTORS = [
     name: 'send payment and invoke contract',
     permissions: [SessionPermission.SEND_PAYMENT, SessionPermission.INVOKE_CONTRACT],
     bitmask:
-      PERM_BITS[SessionPermission.SEND_PAYMENT] |
-      PERM_BITS[SessionPermission.INVOKE_CONTRACT],
+      PERM_BITS[SessionPermission.SEND_PAYMENT] | PERM_BITS[SessionPermission.INVOKE_CONTRACT],
     contractVec: [0, 2],
   },
   {

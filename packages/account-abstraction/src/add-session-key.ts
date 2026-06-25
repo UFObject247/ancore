@@ -14,9 +14,7 @@ function getContract(contract: AccountContract | string): AccountContract {
   return typeof contract === 'string' ? new AccountContract(contract) : contract;
 }
 
-function resolveSessionKeyPermissions(
-  permissions: SessionPermission[] | number[]
-): number[] {
+function resolveSessionKeyPermissions(permissions: SessionPermission[] | number[]): number[] {
   return permissionsToContractVec(permissions as SessionPermission[]);
 }
 
@@ -44,11 +42,7 @@ export function addSessionKey(
 
   if (options) {
     const resolvedContract = getContract(contract);
-    const invocation = resolvedContract.addSessionKey(
-      publicKey,
-      contractPermissions,
-      expiresAt
-    );
+    const invocation = resolvedContract.addSessionKey(publicKey, contractPermissions, expiresAt);
     return Promise.resolve({
       invocation,
       operation: resolvedContract.buildInvokeOperation(invocation),

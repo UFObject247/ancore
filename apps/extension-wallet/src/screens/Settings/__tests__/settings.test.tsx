@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderHook, act } from '@testing-library/react';
 import { NotificationProvider } from '@ancore/ui-kit';
+import i18n from '../../../i18n';
 
 import { useSettings } from '../../../hooks/useSettings';
 import {
@@ -376,5 +377,12 @@ describe('SettingsScreen', () => {
     });
     renderSettingsScreen();
     expect(screen.getAllByText('Mainnet').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders SettingsScreen copy from i18n keys', () => {
+    renderSettingsScreen();
+    expect(screen.getByText(i18n.t('settings.title'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('settings.subtitle'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('settings.account.name'))).toBeInTheDocument();
   });
 });

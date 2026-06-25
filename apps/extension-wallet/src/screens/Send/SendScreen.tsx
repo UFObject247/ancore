@@ -9,6 +9,7 @@ import {
   FormAmountInput,
   cn,
 } from '@ancore/ui-kit';
+import { BASE_SEND_RESERVE, DEFAULT_SEND_FEE } from '@/utils/amount';
 import {
   useSendTransaction,
   type SendFormValues,
@@ -53,9 +54,12 @@ export function SendScreen({ balance, assetDecimals, service, pollIntervalMs }: 
   const send = useSendTransaction({ balance, assetDecimals, service, pollIntervalMs });
   const { recipients, addRecipient } = useRecentRecipients();
 
-  const onMax = () => {
-    setForm((current) => ({ ...current, amount: String(send.balance) }));
-    send.setMaxAmount();
+  const balanceDisplay = balance !== undefined ? balance.toString() : undefined;
+  const maxDisabled = balance === undefined || balance <= BASE_SEND_RESERVE + DEFAULT_SEND_FEE;
+
+  const onMax = async () => {
+    const maxAmount = await send.setMaxAmount({ to: form.to, asset: 'XLM' });
+    setForm((current) => ({ ...current, amount: maxAmount }));
   };
 
   const handleReview = async () => {
@@ -71,6 +75,7 @@ export function SendScreen({ balance, assetDecimals, service, pollIntervalMs }: 
         transaction={send.tx}
         timing={send.timing}
         schedule={send.schedule}
+        simulation={send.simulation}
         onBack={() => send.setStep('form')}
         onConfirm={send.requestConfirm}
       />
@@ -125,10 +130,11 @@ export function SendScreen({ balance, assetDecimals, service, pollIntervalMs }: 
           <FormAmountInput
             label="Amount"
             asset="XLM"
-            balance={send.balance.toString()}
+            balance={balanceDisplay}
             value={form.amount}
             error={send.errors.amount}
             onMax={onMax}
+            maxDisabled={maxDisabled}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
               setForm((current) => ({
                 ...current,

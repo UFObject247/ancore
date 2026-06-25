@@ -63,12 +63,6 @@ struct DecodedCursor {
     i: String, // UUID as string
 }
 
-/// Cursor error
-#[derive(Debug)]
-enum CursorError {
-    Invalid,
-}
-
 /// Encode cursor from created_at and id
 fn encode_cursor(created_at: DateTime<Utc>, id: Uuid) -> String {
     let cursor = DecodedCursor {
@@ -132,71 +126,61 @@ pub async fn get_account_activity(
     );
     query.push_bind(account_id);
 
-    // Push account_id parameter
-    let mut param_count = 1;
-
     // Apply cursor condition (keyset pagination)
     if let Some(ref decoded) = decoded_after {
         query.push(" AND (created_at, id) < (");
         query.push_bind(decoded.t.clone());
         query.push(", ");
-        query.push_bind(Uuid::parse_str(&decoded.i).map_err(|_| {
-            ApiError::InvalidCursor("Invalid UUID in cursor".to_string())
-        })?);
+        query.push_bind(
+            Uuid::parse_str(&decoded.i)
+                .map_err(|_| ApiError::InvalidCursor("Invalid UUID in cursor".to_string()))?,
+        );
         query.push(")");
-        param_count += 2;
     } else if let Some(ref decoded) = decoded_before {
         query.push(" AND (created_at, id) > (");
         query.push_bind(decoded.t.clone());
         query.push(", ");
-        query.push_bind(Uuid::parse_str(&decoded.i).map_err(|_| {
-            ApiError::InvalidCursor("Invalid UUID in cursor".to_string())
-        })?);
+        query.push_bind(
+            Uuid::parse_str(&decoded.i)
+                .map_err(|_| ApiError::InvalidCursor("Invalid UUID in cursor".to_string()))?,
+        );
         query.push(")");
-        param_count += 2;
     }
 
     // Apply filters
     if let Some(ref activity_type) = filter.activity_type {
         query.push(" AND activity_type = ");
         query.push_bind(activity_type);
-        param_count += 1;
     }
 
     if let Some(ref asset) = filter.asset {
         query.push(" AND asset = ");
         query.push_bind(asset);
-        param_count += 1;
     }
 
     if let Some(ref counterparty) = filter.counterparty {
         query.push(" AND counterparty = ");
         query.push_bind(counterparty);
-        param_count += 1;
     }
 
     if let Some(ledger_min) = filter.ledger_min {
         query.push(" AND ledger_seq >= ");
         query.push_bind(ledger_min);
-        param_count += 1;
     }
 
     if let Some(ledger_max) = filter.ledger_max {
         query.push(" AND ledger_seq <= ");
         query.push_bind(ledger_max);
-        param_count += 1;
     }
 
     if let Some(from_date) = filter.from_date {
         query.push(" AND created_at >= ");
         query.push_bind(from_date);
-        param_count += 1;
     }
 
     if let Some(to_date) = filter.to_date {
         query.push(" AND created_at <= ");
         query.push_bind(to_date);
-        param_count += 1;
     }
 
     // Order by and limit
@@ -244,25 +228,22 @@ pub async fn get_account_activity(
     };
 
     // Generate cursors
-    let next_cursor = if has_next_page {
-        if let Some(last_item) = items.last() {
-            Some(encode_cursor(last_item.created_at, last_item.id))
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let next_cursor = has_next_page
+        .then(|| {
+            items
+                .last()
+                .map(|item| encode_cursor(item.created_at, item.id))
+        })
+        .flatten();
 
-    let prev_cursor = if decoded_after.is_some() {
-        if let Some(first_item) = items.first() {
-            Some(encode_cursor(first_item.created_at, first_item.id))
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let prev_cursor = decoded_after
+        .is_some()
+        .then(|| {
+            items
+                .first()
+                .map(|item| encode_cursor(item.created_at, item.id))
+        })
+        .flatten();
 
     let has_previous_page = prev_cursor.is_some();
 

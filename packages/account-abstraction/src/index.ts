@@ -83,3 +83,10 @@ export {
   detectNonceDrift,
 } from './nonce-drift';
 export type { NonceDriftResult, NonceDriftOptions } from './nonce-drift';
+
+export { TransactionBuilder } from './transaction-builder';
+export type {
+  TransactionBuilderOptions,
+  ContractExecuteParams,
+  SimulationResult,
+} from './transaction-builder';

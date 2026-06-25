@@ -21,11 +21,24 @@ describe('loadMobileWalletEnvironment', () => {
     expect(() => loadMobileWalletEnvironment({})).toThrow('ANCORE_ACCOUNT_CONTRACT_ID is required');
   });
 
+  it('loads futurenet defaults when requested', () => {
+    const environment = loadMobileWalletEnvironment({
+      ANCORE_ACCOUNT_CONTRACT_ID: 'CAAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQC526',
+      ANCORE_MOBILE_NETWORK: 'futurenet',
+    });
+
+    expect(environment).toMatchObject({
+      network: 'futurenet',
+      rpcUrl: 'https://rpc-futurenet.stellar.org',
+      networkPassphrase: 'Test SDF Future Network ; October 2022',
+    });
+  });
+
   it('throws when the requested network is unsupported', () => {
     expect(() =>
       loadMobileWalletEnvironment({
         ANCORE_ACCOUNT_CONTRACT_ID: 'CAAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQC526',
-        ANCORE_MOBILE_NETWORK: 'futurenet',
+        ANCORE_MOBILE_NETWORK: 'devnet',
       })
     ).toThrow('Unsupported ANCORE_MOBILE_NETWORK');
   });

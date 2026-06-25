@@ -55,7 +55,10 @@ ancore/
 │   ├── stellar/              # Stellar/Soroban utilities
 │   ├── crypto/               # Cryptographic utilities
 │   ├── ui-kit/               # Shared UI components
-│   └── types/                # Shared TypeScript types
+│   ├── types/                # Shared TypeScript types
+│   ├── wallet-shared/      # dApp protocol, networks, allowlist keys
+│   ├── wallet-api/         # npm SDK for dApps (@ancore/wallet-api)
+│   └── test-fixtures/        # Shared test fixtures for apps and services
 │
 ├── contracts/                # Soroban smart contracts
 │   ├── account/              # Core account contract
@@ -66,7 +69,7 @@ ancore/
 ├── services/                 # Optional infrastructure
 │   ├── relayer/              # Transaction relay service
 │   ├── indexer/              # Blockchain indexer
-│   └── ai-agent/             # Planned AI orchestration service scaffold
+│   └── ai-agent/             # AI agent MVP (draft-only intents)
 │
 └── docs/                     # Documentation
     ├── architecture/         # System architecture
@@ -251,26 +254,54 @@ Optional relayer network for:
 2. **Mobile Apps**: iOS/Android wallets
 3. **Web Dashboard**: Account management interface
 
-## Future Architecture
+## Implementation Status
 
-### Planned Enhancements
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Smart account contract | ✅ Implemented | Audit pending — not production-ready |
+| Session keys (contract) | ✅ Implemented | Permission scoping (#831, #832) in progress |
+| AA SDK (TypeScript) | ✅ Implemented | relay-payload, transaction-builder, xdr-utils |
+| Extension vault + lock | ✅ Implemented | AES-GCM, PBKDF2, inactivity lock |
+| Extension onboarding | ⚠️ Demo path only | Real keygen (#815), contract deploy (#817) needed |
+| Extension send flow | ⚠️ Mock only | Real sign + relayer submit (#820) needed |
+| Extension dApp API | ❌ Stub | Content script (#808), wallet-api (#827) needed |
+| Approval UX routes | ❌ Missing | grant-access (#810), sign-transaction (#767) needed |
+| WebAuthn / Passkey | ❌ Not started | Design doc (#869), PasskeyModule (#859) planned |
+| Relayer security | ❌ Stub | Ed25519 verify (#854), nonce DB (#853) needed |
+| AI agent LLM | ❌ No LLM | Claude Haiku wiring (#836) planned |
+| Mobile WalletConnect | ❌ Not initialized | WalletKit init (#839) needed |
+| Mobile native apps | ❌ Library only | iOS (#848), Android (#849) planned |
+| Indexer contract events | ❌ Missing | Soroban event decoder (#856) planned |
 
-- [ ] Cross-chain support via bridges
-- [ ] Privacy features (zk-proofs)
-- [ ] Advanced recovery mechanisms
-- [ ] Decentralized relayer network
-- [ ] AI-powered financial agent
+## Roadmap Summary
+
+See [ROADMAP.md](../ROADMAP.md) for the full 5-phase plan. Short version:
+
+- **Phase 1** — Extension real-money path: onboarding, background signing, send flow, session persistence
+- **Phase 2** — dApp connectivity: wallet-api, content script, allowlist, signAuthEntry, side panel
+- **Phase 3** — Security parity: Blockaid, memo checks, expanded e2e
+- **Phase 4** — Mobile productionization: vault unify, keychain, WalletConnect, Fastlane
+- **Phase 5** — AA differentiation: session key scoping, passkey onboarding, relayer meta-tx, indexer AA events
+
+## Long-Term Architecture (Post-MVP)
+
+- WebAuthn/Passkey as primary auth (no seed phrase for users)
+- Session key policy scoping: contract allowlists, spend limits, time windows
+- Decentralized relayer network for censorship resistance
+- Cross-chain support via Stellar bridges
+- zk-proof validation modules for privacy-preserving auth
+- AI-powered financial agent with autonomous execution (after human-confirmation MVP)
 
 ## Related Documents
 
-- [Integration guide](../integration-guide.md) (companion table links to [Send flow](#send-flow))
-- [Account Model](./ACCOUNT_MODEL.md)
-- [Session Keys](./SESSION_KEYS.md)
+- [ROADMAP.md](../ROADMAP.md)
+- [Integration guide](../integration-guide.md)
+- [Account Contract](../../contracts/account/README.md)
 - [Security Model](../security/THREAT_MODEL.md)
-- [API Reference](../api/REFERENCE.md)
+- [Freighter Comparison](../wallets/FREIGHTER_COMPARISON.md)
 
 ---
 
 > Note: Planned contract and service scaffolds are intentionally present in the repository layout so contributors can preserve the architecture direction without implying production completeness.
 
-**Last Updated**: May 2026
+**Last Updated**: June 2026

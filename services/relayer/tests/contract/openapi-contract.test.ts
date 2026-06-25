@@ -1,10 +1,10 @@
 /**
  * Contract tests for OpenAPI specification
- * 
+ *
  * These tests verify that the actual API implementation matches the OpenAPI spec.
  * They boot the real Express app and assert that routes, status codes, and response
  * schemas align with the documented specification.
- * 
+ *
  * If any test fails, it indicates either:
  * 1. The implementation has changed and the spec needs updating
  * 2. The spec has changed and the implementation needs updating
@@ -96,9 +96,7 @@ describe('OpenAPI Contract Tests', () => {
       });
 
       it('returns 401 on missing authorization', async () => {
-        const res = await request(makeApp())
-          .post('/relay/execute')
-          .send(validBody);
+        const res = await request(makeApp()).post('/relay/execute').send(validBody);
 
         expect(res.status).toBe(401);
       });
@@ -133,9 +131,7 @@ describe('OpenAPI Contract Tests', () => {
       });
 
       it('returns 401 on missing authorization', async () => {
-        const res = await request(makeApp())
-          .post('/relay/validate')
-          .send(validBody);
+        const res = await request(makeApp()).post('/relay/validate').send(validBody);
 
         expect(res.status).toBe(401);
       });
@@ -272,9 +268,7 @@ describe('OpenAPI Contract Tests', () => {
     });
 
     it('requires Authorization header for protected routes', async () => {
-      const res = await request(makeApp())
-        .post('/relay/execute')
-        .send(validBody);
+      const res = await request(makeApp()).post('/relay/execute').send(validBody);
 
       expect(res.status).toBe(401);
     });

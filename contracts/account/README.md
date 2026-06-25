@@ -105,19 +105,43 @@ fn get_session_key(env: Env, public_key: BytesN<32>) -> Option<SessionKey>
 
 Manage session keys for the account.
 
-#### Session permission bits
+#### Permission bits
 
-Session key permissions are stored on-chain as `Vec<u32>`. Each value is a permission index; SDK/UI code may combine selections into a bitmask using `1 << index`.
+<a name="permission-bits"></a>
 
-| Index | Bit flag | Name | Description |
-| ----- | -------- | ---- | ----------- |
-| `0` | `1 << 0` (`0b001`) | `SEND_PAYMENT` | Authorize payment operations |
-| `1` | `1 << 1` (`0b010`) | `MANAGE_DATA` | Authorize manage-data operations |
-| `2` | `1 << 2` (`0b100`) | `INVOKE_CONTRACT` | Authorize arbitrary contract invocations |
+Session key permissions are stored on-chain as a `Vec<u32>`. The contract
+checks `session.permissions.contains(value)` — a session key must hold the
+required `u32` value to be authorized.
 
-> **Important:** `execute()` requires the session key `Vec<u32>` to contain the internal `PERMISSION_EXECUTE` constant (`1`). This is separate from the SDK bitmask representation above. Always include `1` in the permissions vector for session keys that need to call `execute()`, regardless of other permission indices selected.
+**Defined constants** (source: `src/lib.rs`):
+
+| Value | Constant             | Description                                                                                                                                             |
+| ----- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1`   | `PERMISSION_EXECUTE` | Required to call `execute()`. A session key whose `permissions` vec does not contain `1` will be rejected with `InsufficientPermission` (error code 7). |
+
+> **Reserved values:** `0` and values ≥ `2` are reserved for future expansion
+> and have no effect in the current contract.
+
+> **Reviewer checklist:** When adding a new permission constant, update this
+> table, `docs/contract-methods.md#session-permissions`, and the Rust test
+> `test_permission_execute_constant_value` to keep all three in sync.
 
 Use `@ancore/account-abstraction` helpers (`permissionsToBitmask`, `bitmaskToContractVec`, `permissionsToContractVec`) to keep UI, SDK, and contract representations aligned.
+
+See also: [`docs/contract-methods.md` — Session permissions](../../docs/contract-methods.md#session-permissions)
+
+### Upgrade
+
+```rust
+fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError>
+```
+
+Upgrade the contract to a new WASM hash. Only the owner can execute upgrades. The function rejects:
+
+- All-zero WASM hash: `[0u8; 32]`
+- Same hash as currently deployed: re-upgrade to identical hash is rejected with `InvalidWasmHash`
+
+This prevents no-op upgrades and ensures gas efficiency.
 
 ### Validation Module Boundary
 
@@ -149,6 +173,7 @@ The contract uses structured error codes to provide clear feedback for failure c
 | 7          | `InsufficientPermission` | Insufficient permissions               |
 | 8          | `InvalidVersion`         | Invalid version provided for migration |
 | 9          | `InvalidSignature`       | Invalid signature provided             |
+| 10         | `InvalidWasmHash`        | Invalid or duplicate WASM hash         |
 
 ### Error Handling Examples
 

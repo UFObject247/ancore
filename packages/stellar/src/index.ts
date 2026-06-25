@@ -6,13 +6,14 @@
 export const STELLAR_VERSION = '0.1.0';
 
 // Client
-export { StellarClient } from './client';
+export { StellarClient, createStellarClient } from './client';
 export type {
   AccountActivityPage,
   AccountActivityPageRequest,
   AssetMetadata,
   AssetMetadataCacheMetrics,
   Balance,
+  NetworkId,
   StellarClientConfig,
 } from './client';
 
@@ -40,3 +41,7 @@ export type { RetryOptions, RetryPresetConfig, RetryPresetName } from './retry';
 // Fee stats
 export { fetchFeeStats, FALLBACK_FEE_STATS } from './fee-stats';
 export type { FeeStats, FeeStatsOptions } from './fee-stats';
+
+// Simulation
+export { parseSimulationResponse, simulateUnsignedTransaction } from './simulation';
+export type { ParsedSimulationResult, SorobanResourceLimits } from './simulation';

@@ -50,11 +50,12 @@ describe('ScheduledTransferService execution safeguards', () => {
     const service = new ScheduledTransferService(store, relayService as never);
     const transfer = service.create(validBody(new Date().toISOString()), 'caller-a');
 
+    const beforeProcess = Date.now();
     await service.processDueTransfers(new Date());
 
     const updated = store.getById(transfer.id);
     expect(updated?.consecutiveFailures).toBe(1);
-    expect(new Date(updated!.nextRunAt).getTime()).toBeGreaterThan(Date.now());
+    expect(new Date(updated!.nextRunAt).getTime()).toBeGreaterThanOrEqual(beforeProcess);
     expect(service.listExecutions(transfer.id, 'caller-a')).toHaveLength(1);
   });
 

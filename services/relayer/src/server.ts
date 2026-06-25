@@ -1,4 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { RelayService } from './services/relayService';
@@ -7,6 +8,8 @@ import { createAuthMiddleware } from './middleware/auth';
 import { createIdempotencyMiddleware } from './middleware/idempotency';
 import { createPayloadGuardMiddleware } from './middleware/payloadGuard';
 import { createRequestLoggerMiddleware } from './middleware/requestLogger';
+import { createMetricsCollectorMiddleware } from './middleware/metricsCollector';
+import { renderPrometheusMetrics } from './metrics';
 import { validateBody } from './validation/middleware';
 import { createExecuteRelayHandler } from './handlers/executeRelay';
 import { createValidateRelayHandler } from './handlers/validateRelay';
@@ -61,6 +64,19 @@ const defaultSignatureService: SignatureServiceContract = new Ed25519SignatureSe
 
 // ── App factory (exported for testing) ───────────────────────────────────────
 
+/**
+ * Parse ALLOWED_ORIGINS environment variable into an array of allowed origins.
+ * Format: comma-separated list of origins (e.g., "http://localhost:3000,https://app.example.com")
+ * If not set, defaults to allowing all origins for development ('*').
+ */
+function parseAllowedOrigins(): string[] | string {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (!envOrigins) {
+    return '*'; // Default to wildcard for development
+  }
+  return envOrigins.split(',').map((origin) => origin.trim());
+}
+
 export function createApp(
   authService: AuthServiceContract = stubAuthService,
   signatureService: SignatureServiceContract = defaultSignatureService,
@@ -70,16 +86,15 @@ export function createApp(
 ): Express {
   const app = express();
 
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN ?? '*');
-    res.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(204);
-      return;
-    }
-    next();
-  });
+  const corsOrigins = parseAllowedOrigins();
+  app.use(
+    cors({
+      origin: corsOrigins,
+      methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      credentials: true,
+    })
+  );
 
   // Payload guard: reject oversized requests before body parsing to prevent
   // resource abuse. Runs early in the stack, before express.json().
@@ -88,6 +103,10 @@ export function createApp(
   // Request logger: attaches req.log and emits start/complete structured logs.
   // Registered after CORS and payload guard, before auth and body parsing.
   app.use(createRequestLoggerMiddleware());
+
+  // Metrics collector: records /relay/* latency histogram and error counter.
+  // Registered after request logger so req.startTime is already set.
+  app.use(createMetricsCollectorMiddleware());
 
   app.use(express.json());
 
@@ -147,6 +166,10 @@ export function createApp(
   app.post('/relay/execute', auth, relayLimiter, validate, idempotency, executeHandler);
   app.post('/relay/validate', auth, relayLimiter, validate, validateHandler);
   app.get('/relay/status', statusLimiter, (_req, res) => res.json(relayService.health()));
+  app.get('/metrics', (_req, res) => {
+    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(renderPrometheusMetrics());
+  });
 
   app.post(
     '/api/v1/scheduled-transfers',

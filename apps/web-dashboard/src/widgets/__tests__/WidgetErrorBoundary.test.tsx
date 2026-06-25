@@ -53,7 +53,10 @@ describe('WidgetErrorBoundary', () => {
     // Verifies our useWidgetErrorLogger was triggered
     expect(console.error).toHaveBeenCalledWith(
       '[Widget Error Logger] Caught isolated widget failure:',
-      expect.any(Error)
+      {
+        name: 'Error',
+        message: 'Test Error: Widget Crashed',
+      }
     );
   });
 

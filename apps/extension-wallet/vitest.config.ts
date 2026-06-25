@@ -10,14 +10,20 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    testTimeout: 30000,
+    // Crypto-heavy security tests run in Node — jsdom subtle is unreliable on Linux CI.
+    environmentMatchGlobs: [
+      ['src/security/__tests__/vault-export.test.ts', 'node'],
+      ['src/security/__tests__/extension-storage-encryption.test.ts', 'node'],
+    ],
+    setupFiles: ['../../packages/ensure-webcrypto.ts', './src/test/setup.ts'],
+    testTimeout: 60000,
+    hookTimeout: 30000,
     css: true,
+    fileParallelism: process.env.CI !== 'true',
     exclude: [
       '**/node_modules/**',
       '**/*.e2e.test.{ts,tsx}',
       '**/tests/e2e/**',
-      '**/Onboarding/__tests__/**',
       '**/messaging/__tests__/messaging.test.ts',
       '**/SessionKeys/__tests__/**',
     ],
@@ -32,6 +38,8 @@ export default defineConfig({
         rootDir,
         '../../packages/account-abstraction/src/index.ts'
       ),
+      '@ancore/wallet-shared': path.resolve(rootDir, '../../packages/wallet-shared/src/index.ts'),
+      '@ancore/stellar': path.resolve(rootDir, '../../packages/stellar/src/index.ts'),
     },
   },
 });

@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+import { validateTransferPolicy } from '@ancore/types';
 import type { JobQueue } from '../queue/JobQueue';
 import type { IdempotencyStore } from '../store/idempotency';
 import type {
@@ -12,6 +13,7 @@ import type {
   HealthResponse,
   DependencyStatus,
 } from '../types';
+import { mapSimulationError } from './mapSimulationError';
 import { mapSubmissionError } from './mapSubmissionError';
 
 const SIGNED_TX_PARAMETER = 'signedTransactionXdr';
@@ -68,6 +70,18 @@ export class RelayService implements RelayServiceContract {
       };
     }
 
+    // Validate transfer policy if provided
+    if (request.transferPolicy) {
+      const { policy, amount, todayTotal } = request.transferPolicy;
+      const policyResult = validateTransferPolicy(amount, todayTotal, policy);
+      if (policyResult.action === 'block') {
+        return {
+          valid: false,
+          error: { code: 'TRANSFER_LIMIT_EXCEEDED', message: policyResult.message },
+        };
+      }
+    }
+
     return { valid: true };
   }
 
@@ -116,7 +130,7 @@ export class RelayService implements RelayServiceContract {
     } catch (error) {
       return {
         success: false,
-        error: mapSubmissionError(error),
+        error: mapSimulationError(error) ?? mapSubmissionError(error),
         gasUsed: 0,
       };
     }
