@@ -74,6 +74,9 @@ export {
   TransactionSubmissionError,
   PaymentRequestValidationError,
   InvalidAmountError,
+  StrKeyValidationError,
+  assertValidEd25519PublicKey,
+  assertValidContractId,
 } from './errors';
 
 // Normalization helpers

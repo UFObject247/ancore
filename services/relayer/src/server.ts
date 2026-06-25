@@ -8,6 +8,7 @@ import { createAuthMiddleware } from './middleware/auth';
 import { createIdempotencyMiddleware } from './middleware/idempotency';
 import { createPayloadGuardMiddleware } from './middleware/payloadGuard';
 import { createRequestLoggerMiddleware } from './middleware/requestLogger';
+import { createRequestIdMiddleware } from './middleware/requestId';
 import { createMetricsCollectorMiddleware } from './middleware/metricsCollector';
 import { renderPrometheusMetrics } from './metrics';
 import { validateBody } from './validation/middleware';
@@ -99,6 +100,9 @@ export function createApp(
   // Payload guard: reject oversized requests before body parsing to prevent
   // resource abuse. Runs early in the stack, before express.json().
   app.use(createPayloadGuardMiddleware());
+
+  // Request ID middleware: validate or generate X-Request-Id, attach to req
+  app.use(createRequestIdMiddleware());
 
   // Request logger: attaches req.log and emits start/complete structured logs.
   // Registered after CORS and payload guard, before auth and body parsing.
