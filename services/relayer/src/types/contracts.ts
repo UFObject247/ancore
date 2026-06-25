@@ -16,6 +16,13 @@ export interface TransactionSubmissionResult {
 
 /** Boundary for Horizon/Soroban transaction submission (mockable in tests) */
 export interface TransactionSubmitterContract {
+  /**
+   * Simulate a signed transaction, assemble Soroban resource footprints/fees,
+   * and return the prepared XDR plus estimated fee.
+   */
+  simulateAndAssembleTransaction(
+    signedXdr: string
+  ): Promise<{ assembledXdr: string; gasUsed: number }>;
   submitSignedTransaction(signedXdr: string): Promise<TransactionSubmissionResult>;
   isHealthy(): Promise<{ healthy: boolean; latencyMs?: number }>;
 }

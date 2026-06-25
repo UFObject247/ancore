@@ -14,7 +14,6 @@ import type {
 } from '../types';
 import { mapSubmissionError } from './mapSubmissionError';
 
-const MOCK_GAS_USED = 21_000;
 const SIGNED_TX_PARAMETER = 'signedTransactionXdr';
 const startTime = Date.now();
 
@@ -79,7 +78,7 @@ export class RelayService implements RelayServiceContract {
     }
 
     if (this.useMockSubmission) {
-      return { success: true, transactionId: mockTxId(), gasUsed: MOCK_GAS_USED };
+      return { success: true, transactionId: mockTxId(), gasUsed: 0 };
     }
 
     if (!this.transactionSubmitter) {
@@ -106,11 +105,13 @@ export class RelayService implements RelayServiceContract {
     }
 
     try {
-      const result = await this.transactionSubmitter.submitSignedTransaction(signedXdr);
+      const { assembledXdr, gasUsed } =
+        await this.transactionSubmitter.simulateAndAssembleTransaction(signedXdr);
+      const result = await this.transactionSubmitter.submitSignedTransaction(assembledXdr);
       return {
         success: true,
         transactionId: result.transactionHash,
-        gasUsed: result.gasUsed,
+        gasUsed,
       };
     } catch (error) {
       return {

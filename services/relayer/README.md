@@ -33,6 +33,7 @@ The service publishes an OpenAPI 3.1 specification that documents all endpoints,
 **Specification file:** `services/relayer/openapi.yaml`
 
 **View the spec:**
+
 ```bash
 # View raw specification
 cat services/relayer/openapi.yaml
@@ -46,6 +47,7 @@ npx @redocly/cli preview-docs services/relayer/openapi.yaml
 The OpenAPI specification can be used to generate TypeScript types for use in external integrations (e.g., wallet teams). This ensures type safety when calling the relayer API.
 
 **Regenerate types:**
+
 ```bash
 # From repository root
 pnpm install -D openapi-typescript
@@ -58,23 +60,27 @@ npx ts-node scripts/generate-openapi-types.ts
 **Generated file:** `services/relayer/src/api/openapi-types.ts`
 
 The generated types include:
+
 - Request schemas (`RelayExecuteRequest`, `RelayValidateRequest`)
 - Response schemas (`RelayExecuteResponse`, `ValidationResult`, `HealthResponse`)
 - Error schemas (`RelayError`, `ValidationErrorResponse`)
 
 **Usage in external projects:**
+
 ```typescript
 import type {
   RelayExecuteRequest,
   RelayExecuteResponse,
-  ValidationErrorResponse
+  ValidationErrorResponse,
 } from '@ancore/relayer/src/api/openapi-types';
 
 // Type-safe request construction
 const request: RelayExecuteRequest = {
   sessionKey: 'a'.repeat(64),
   operation: 'relay_execute',
-  parameters: { /* ... */ },
+  parameters: {
+    /* ... */
+  },
   signature: 'b'.repeat(128),
   nonce: 1,
 };
@@ -85,11 +91,13 @@ const request: RelayExecuteRequest = {
 The service includes contract tests that verify the actual API implementation matches the OpenAPI specification. These tests boot the real Express app and assert that routes, status codes, and response schemas align with the documented specification.
 
 **Run contract tests:**
+
 ```bash
 pnpm --filter @ancore/relayer test -- tests/contract
 ```
 
 If contract tests fail, it indicates either:
+
 1. The implementation has changed and the spec needs updating
 2. The spec has changed and the implementation needs updating
 
@@ -117,7 +125,7 @@ Execute a signed relay transaction.
 {
   "success": true,
   "transactionId": "<64-char hex>",
-  "gasUsed": 21000
+  "gasUsed": 0
 }
 ```
 
@@ -317,6 +325,7 @@ Dependent services should:
 ## Example cURL Commands
 
 **Execute a relay transaction:**
+
 ```bash
 curl -X POST http://localhost:3000/relay/execute \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -337,6 +346,7 @@ curl -X POST http://localhost:3000/relay/execute \
 ```
 
 **Validate a relay transaction:**
+
 ```bash
 curl -X POST http://localhost:3000/relay/validate \
   -H "Authorization: Bearer YOUR_TOKEN" \

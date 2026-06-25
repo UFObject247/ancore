@@ -518,6 +518,35 @@ export class StellarClient {
   }
 
   /**
+   * Simulate a Soroban transaction against the RPC server.
+   *
+   * @param transaction - The transaction to simulate
+   * @returns The raw simulation response from Soroban RPC
+   * @throws NetworkError if the RPC request fails
+   */
+  async simulateTransaction(
+    transaction: Transaction
+  ): Promise<StellarRpc.Api.SimulateTransactionResponse> {
+    try {
+      return await withRetry(
+        async () =>
+          this.executeRpcWithFailover((rpcServer) => rpcServer.simulateTransaction(transaction)),
+        {
+          ...this.retryOptions,
+          isRetryable: (error) => this.isRetryableRpcError(error),
+        }
+      );
+    } catch (error: unknown) {
+      if (error instanceof RetryExhaustedError && error.lastError) {
+        if (error.lastError instanceof NetworkError) {
+          throw error.lastError;
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Submit a signed transaction to the network
    *
    * @param transaction - The signed transaction to submit

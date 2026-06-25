@@ -31,6 +31,10 @@ function makeSubmitter(
   overrides: Partial<TransactionSubmitterContract> = {}
 ): TransactionSubmitterContract {
   return {
+    simulateAndAssembleTransaction: jest.fn().mockResolvedValue({
+      assembledXdr: 'AAAA-assembled-xdr',
+      gasUsed: 150,
+    }),
     submitSignedTransaction: jest.fn().mockResolvedValue({
       transactionHash: NETWORK_HASH,
       gasUsed: 150,
@@ -79,7 +83,7 @@ describe('RelayService', () => {
       const result = await svc.executeRelay(makeRequest());
       expect(result.success).toBe(true);
       expect(result.transactionId).toMatch(/^[0-9A-F]{64}$/);
-      expect(result.gasUsed).toBe(21_000);
+      expect(result.gasUsed).toBe(0);
     });
 
     it('returns network transaction hash from submitter on valid request', async () => {
@@ -92,7 +96,8 @@ describe('RelayService', () => {
       expect(result.success).toBe(true);
       expect(result.transactionId).toBe(NETWORK_HASH);
       expect(result.gasUsed).toBe(150);
-      expect(submitter.submitSignedTransaction).toHaveBeenCalledWith('AAAA-signed-xdr');
+      expect(submitter.simulateAndAssembleTransaction).toHaveBeenCalledWith('AAAA-signed-xdr');
+      expect(submitter.submitSignedTransaction).toHaveBeenCalledWith('AAAA-assembled-xdr');
     });
 
     it('returns INTERNAL_ERROR when signedTransactionXdr is missing', async () => {
@@ -120,6 +125,24 @@ describe('RelayService', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('INTERNAL_ERROR');
       expect(result.error?.message).toBe('Horizon down');
+    });
+
+    it('returns SIMULATION_FAILED when simulation rejects the transaction', async () => {
+      const { SimulationFailedError } = await import('@ancore/stellar');
+      const submitter = makeSubmitter({
+        simulateAndAssembleTransaction: jest
+          .fn()
+          .mockRejectedValue(new SimulationFailedError('contract revert')),
+      });
+      const svc = new RelayService(makeSignatureService(true), undefined, undefined, submitter);
+      const result = await svc.executeRelay(
+        makeRequest({ parameters: { signedTransactionXdr: 'AAAA-signed-xdr' } })
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('SIMULATION_FAILED');
+      expect(result.error?.message).toBe('contract revert');
+      expect(submitter.submitSignedTransaction).not.toHaveBeenCalled();
     });
 
     it('returns success=false and propagates error on invalid request', async () => {

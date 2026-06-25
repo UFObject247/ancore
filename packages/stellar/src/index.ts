@@ -21,6 +21,7 @@ export {
   StellarError,
   NetworkError,
   AccountNotFoundError,
+  SimulationFailedError,
   TransactionError,
   RetryExhaustedError,
 } from './errors';

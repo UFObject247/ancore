@@ -25,6 +25,10 @@ function makeMockSubmitter(
   overrides: Partial<TransactionSubmitterContract> = {}
 ): TransactionSubmitterContract {
   return {
+    simulateAndAssembleTransaction: jest.fn().mockResolvedValue({
+      assembledXdr: 'AAAA-assembled-xdr',
+      gasUsed: 150,
+    }),
     submitSignedTransaction: jest.fn().mockResolvedValue({
       transactionHash: NETWORK_HASH,
       gasUsed: 150,
@@ -65,7 +69,7 @@ describe('POST /relay/execute', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.transactionId).toMatch(/^[0-9A-F]{64}$/);
-    expect(res.body.gasUsed).toBe(21_000);
+    expect(res.body.gasUsed).toBe(0);
   });
 
   it('200 with network transaction hash when submitter is wired', async () => {
@@ -82,7 +86,8 @@ describe('POST /relay/execute', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.transactionId).toBe(NETWORK_HASH);
     expect(res.body.gasUsed).toBe(150);
-    expect(submitter.submitSignedTransaction).toHaveBeenCalledWith('AAAA-signed-xdr');
+    expect(submitter.simulateAndAssembleTransaction).toHaveBeenCalledWith('AAAA-signed-xdr');
+    expect(submitter.submitSignedTransaction).toHaveBeenCalledWith('AAAA-assembled-xdr');
   });
 
   it('422 with typed error when network submission fails', async () => {
