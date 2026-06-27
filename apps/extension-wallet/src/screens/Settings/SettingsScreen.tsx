@@ -1,17 +1,3 @@
-import * as React from 'react';
-import {
-  Globe,
-  Lock,
-  Timer,
-  Key,
-  FileText,
-  Info,
-  Bell,
-  Monitor,
-  Server,
-  Shield,
-  PanelRight,
-} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SettingsGroup, SettingItem } from '../../components/SettingsGroup';
 import { NetworkSettings } from './NetworkSettings';
@@ -222,11 +208,6 @@ export function SettingsScreen() {
             onClick={() => setView('security')}
           />
           <SettingItem
-            label={t('settings.security.connectedSites.label')}
-            description={t('settings.security.connectedSites.description')}
-            icon={<Globe className="h-4 w-4" />}
-            onClick={() => setView('connected-sites')}
-          />
           <SettingItem
             label={t('settings.security.exportPrivateKey.label')}
             description={t('settings.security.exportPrivateKey.description')}
